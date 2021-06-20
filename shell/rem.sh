@@ -4,10 +4,11 @@
 # restore to specific location
 # date-based selection
 
-TRASH="$HOME/.trash"
-LOGFILE="$TRASH/history"
-LOCK="$TRASH/lock"
-LOCATION="$HOME/bin/Rem/shell"
+ROOT="${REM_ROOT:-$HOME/.trash}"
+LOGFILE="$ROOT/history"
+LOCK="$ROOT/lock"
+REGISTRY="$ROOT/registry"
+LOCATION="$HOME/bin/Rem"
 HELP_LOC="$LOCATION/help.fmt"
 SANDBOX=
 OVERWRITE=
@@ -51,7 +52,7 @@ unlock_critical_section() {
 }
 
 load_ext() {
-    local f="$LOCATION/rem_$1.sh"
+    local f="$LOCATION/shell/rem_$1.sh"
     if [ -e "$f" ]; then
         . "$f"
     else
@@ -74,7 +75,7 @@ newname() {
     # Randomly generate until name is unused
     local name
     name=''
-    until [ -n "$name" ] && ! [ -e "$TRASH/$name" ]; do
+    until [ -n "$name" ] && ! [ -e "$REGISTRY/$name" ]; do
         name=`randname`
     done
     echo "$name"
@@ -91,7 +92,8 @@ file_aliased() {
 
 check_install() {
     # Create ~/.trash if missing
-    mkdir -p "$TRASH"
+    mkdir -p "$ROOT"
+    mkdir -p "$REGISTRY"
     : >> "$LOGFILE"
 }
 
@@ -117,7 +119,7 @@ refpoint() {
 make_info() {
     local name="$1"
     local source="$2"
-    local infofile="$TRASH/$name.info"
+    local infofile="$REGISTRY/$name/meta"
     refpoint "Create $infofile"
     critical "basename \"$source\" > \"$infofile\""
     critical "date \"+%Y-%m-%d %H:%M:%S\" >> \"$infofile\""
@@ -133,9 +135,10 @@ del_register() {
     if [ -e "$source" ]; then
         local name=`newname`
         refpoint "Register $source as $name"
+        critical "mkdir \"$REGISTRY/$name\""
         critical "echo \"$name|$source\" >> \"$LOGFILE\""
         make_info "$name" "$source"
-        critical "mv \"$source\" \"$TRASH/$name\""
+        critical "mv \"$source\" \"$REGISTRY/$name/file\""
     else
         echo "$source not found             (skipping)"
     fi

@@ -14,11 +14,8 @@ list_pat() {
     while read -t 0.05 line; do
         let '++index'
         local actual="$( file_actual "$line" )"
-        local aliased="$( file_aliased "$line" )"
-        if [ -e "$TRASH/$aliased" ]; then
-            if eval "[[ \"$actual\" =~ $pat ]]"; then
-                echo "$index $actual"
-            fi
+        if eval "[[ \"$actual\" =~ $pat ]]"; then
+            echo "$index $actual"
         fi
     done
 }
@@ -30,7 +27,6 @@ list_fzf() {
     while read -t 0.05 line; do
         let '++index'
         local actual="$( file_actual "$line" )"
-        local aliased="$( file_aliased "$line" )"
         echo "$index $actual"
     done |
     sed "s,$HOME,~," |
@@ -54,7 +50,6 @@ list_idx() {
         let '++index'
         if (( $index < $start )); then continue; fi
         local actual="$( file_actual "$line" )"
-        local aliased="$( file_aliased "$line" )"
         echo "$index $actual"
         if (( $index == $end )); then break; fi
     done
@@ -108,7 +103,7 @@ list_time() {
         let '++index'
         local actual="$( file_actual "$line" )"
         local aliased="$( file_aliased "$line" )"
-        deleted="$( sed -n '2p' "$TRASH/$aliased.info" )"
+        deleted="$( sed -n '2p' "$REGISTRY/$aliased/meta" )"
         tdel="$( date -d "$deleted" '+%s' )"
         if (( old <= new )); then
             # Normal interval check

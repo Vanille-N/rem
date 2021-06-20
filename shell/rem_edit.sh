@@ -15,7 +15,7 @@ get_line() {
 
 print_info() {
     local id="$( file_aliased "$( get_line "$1" )" )"
-    critical "cat \"$TRASH/$id.info\""
+    critical "cat \"$REGISTRY/$id/meta\""
     if [ -z "$SANDBOX" ]; then
         echo "=============================================="
         echo ""
@@ -28,7 +28,7 @@ clean_history() {
     cat "$LOGFILE" |
     while read -t 0.05 line; do
         id="$( file_aliased "$line" )"
-        [ -e "$TRASH/$id" ] && echo "$line"
+        [ -e "$REGISTRY/$id" ] && echo "$line"
     done |
     awk 'BEGIN { RS="\n{2,}" } { print "\n" $0 }' > "$LOGFILE.tmp"
     critical "mv \"$LOGFILE.tmp\" \"$LOGFILE\""
@@ -47,8 +47,8 @@ restore_file() {
         echo "File '$actual' already exists, using '$actual.$id' instead"
         actual+=".$id"
     fi
-    critical "mv \"$TRASH/$aliased\" \"$actual\""
-    critical "rm \"$TRASH/$aliased.info\""
+    critical "mv \"$REGISTRY/$aliased/file\" \"$actual\""
+    critical "rm -rf \"$REGISTRY/$aliased\""
 }
 
 undo_del() {
@@ -76,10 +76,11 @@ restore_index() {
 
 permanent_remove() {
     local linenum="$( echo "$1" | cut -d" " -f1 )"
-    local aliased="$( file_aliased "$( get_line "$linenum" )" )"
-    refpoint "Delete permanently '$aliased'"
-    critical "rm -r \"$TRASH/$aliased.info\""
-    critical "rm -rf \"$TRASH/$aliased\""
+    local line="$( get_line "$linenum" )"
+    local aliased="$( file_aliased "$line" )"
+    local actual="$( file_actual "$line" )"
+    refpoint "Delete permanently '$actual'"
+    critical "rm -rf \"$REGISTRY/$aliased\""
 }
 
 
