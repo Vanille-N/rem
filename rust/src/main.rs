@@ -1,6 +1,9 @@
+mod command;
 mod config;
 
 fn main() {
-    let cmd = config::Command::argparse(std::env::args());
+    let cmd = command::Command::argparse();
+    let cfg = config::Config::getenv();
     println!("{:?}", cmd);
+    println!("{:?}", cfg);
 }
