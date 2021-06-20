@@ -7,12 +7,14 @@
 TRASH="$HOME/.trash"
 LOGFILE="$TRASH/history"
 LOCK="$TRASH/lock"
-HELP_LOC="$HOME/bin/Rem/rem.fmt"
+LOCATION="$HOME/bin/Rem/shell"
+HELP_LOC="$LOCATION/help.fmt"
 SANDBOX=
 OVERWRITE=
 RANDOM=$( date +%N | sed 's,^0*,,' )
-IDENT="$$"
 CRITICAL=1
+
+REM_ENV=1
 
 HOME_SUB="s,$HOME,~,"
 
@@ -46,6 +48,17 @@ lock_critical_section() {
 }
 unlock_critical_section() {
     rm "$LOCK"
+}
+
+load_ext() {
+    local f="$LOCATION/rem_$1.sh"
+    if [ -e "$f" ]; then
+        . "$f"
+    else
+        efmt "${Bold}${Red}Unable to load extension ${Blue}'$1'${Blue}"
+        efmt "  File ${Bold}${Blue}'$f'${__} does not exist"
+        exit 7
+    fi
 }
 
 UNIMPLEMENTED() {
@@ -126,251 +139,6 @@ del_register() {
     else
         echo "$source not found             (skipping)"
     fi
-}
-
-get_line() {
-    # Extract i'th entry of ~/.trash/history
-    local linenum="$1"
-    tac "$LOGFILE" |
-    grep '|' |
-    sed --quiet "${linenum}p"
-} 
-
-print_info() {
-    local id="$( file_aliased "$( get_line "$1" )" )"
-    critical "cat \"$TRASH/$id.info\""
-    if [ -z "$SANDBOX" ]; then
-        echo "=============================================="
-        echo ""
-    fi
-}
-
-list_pat() {
-    local pat="$1"
-    pat=".*$pat.*" # note that empty pattern matches anything
-    local index=0
-    tac "$LOGFILE" |
-    grep '|' |
-    while read -t 0.05 line; do
-        let '++index'
-        local actual="$( file_actual "$line" )"
-        local aliased="$( file_aliased "$line" )"
-        if [ -e "$TRASH/$aliased" ]; then
-            if eval "[[ \"$actual\" =~ $pat ]]"; then
-                echo "$index $actual"
-            fi
-        fi
-    done
-}
-
-list_fzf() {
-    local index=0
-    tac "$LOGFILE" |
-    grep '|' |
-    while read -t 0.05 line; do
-        let '++index'
-        local actual="$( file_actual "$line" )"
-        local aliased="$( file_aliased "$line" )"
-        echo "$index $actual"
-    done |
-    sed "s,$HOME,~," |
-    fzf --multi \
-        --preview='\
-            rem --info \
-                --idx "$( echo {} | cut -d" " -f1 )" \
-            | sed '"$HOME_SUB" \
-        --preview-window=up
-}
-
-list_idx() {
-    local start="$( echo "$1" | cut -d'-' -f1 )"
-    local end="$( echo "$1" | cut -d'-' -f2 )"
-    start="${start:-1}"
-    end="${end:-0}"
-    local index=0
-    tac "$LOGFILE" |
-    grep '|' |
-    while read -t 0.05 line; do
-        let '++index'
-        if (( $index < $start )); then continue; fi
-        local actual="$( file_actual "$line" )"
-        local aliased="$( file_aliased "$line" )"
-        echo "$index $actual"
-        if (( $index == $end )); then break; fi
-    done
-}
-
-
-DUR_MINUTE=60
-DUR_HOUR=$(( DUR_MINUTE * 60 ))
-DUR_DAY=$(( DUR_HOUR * 24 ))
-DUR_WEEK=$(( DUR_DAY * 7 ))
-DUR_MONTH=$(( DUR_DAY * 30 ))
-DUR_YEAR=$(( DUR_DAY * 365 ))
-interprete_timeframe() {
-    local curr=0
-    local acc=0
-    while read -n1 c; do
-        if [[ $c =~ [[:digit:]] ]]; then
-            let 'curr = curr * 10 + c'
-        else
-            case "$c" in
-                (' '|"\t"|"\n"|'') continue;;
-                (s) let 'acc += (curr ? curr : 1)';;
-                (m) let 'acc += (curr ? curr : 1) * DUR_MINUTE';;
-                (h) let 'acc += (curr ? curr : 1) * DUR_HOUR';;
-                (d) let 'acc += (curr ? curr : 1) * DUR_DAY';;
-                (W) let 'acc += (curr ? curr : 1) * DUR_WEEK';;
-                (M) let 'acc += (curr ? curr : 1) * DUR_MONTH';;
-                (Y) let 'acc += (curr ? curr : 1) * DUR_YEAR';;
-                (*) efmt "${Bold}${Red}Not a valid duration: ${Green}'$c'"
-                    efmt "  Use one of s,m,h,d,W,M,Y"
-                    exit 110
-                    ;;
-            esac
-            let 'curr = 0'
-
-        fi
-    done
-    let 'acc += curr * DUR_DAY'
-    echo "$acc"
-}
-
-list_time() {
-    local current="$( date '+%s' )"
-    local dt_old="$( echo "$1" | cut -d'-' -f2 | interprete_timeframe )"
-    local dt_new="$( echo "$1" | cut -d'-' -f1 | interprete_timeframe )"
-    local old=$(( current - dt_old ))
-    local new=$(( current - dt_new ))
-    local index=0
-    tac "$LOGFILE" |
-    grep '|' |
-    while read -t 0.05 line; do
-        let '++index'
-        local actual="$( file_actual "$line" )"
-        local aliased="$( file_aliased "$line" )"
-        deleted="$( sed -n '2p' "$TRASH/$aliased.info" )"
-        tdel="$( date -d "$deleted" '+%s' )"
-        if (( old <= new )); then
-            # Normal interval check
-            if (( old <= tdel )) && (( tdel <= new )); then
-                echo "$index $actual"
-            fi
-        else
-            # Inverted interval
-            if (( old < tdel )) || (( tdel < new )); then
-                echo "$index $actual"
-            fi
-        fi
-    done
-}
-
-clean_history() {
-    local id
-    refpoint "Clean history"
-    cat "$LOGFILE" |
-    while read -t 0.05 line; do
-        id="$( file_aliased "$line" )"
-        [ -e "$TRASH/$id" ] && echo "$line"
-    done |
-    awk 'BEGIN { RS="\n{2,}" } { print "\n" $0 }' > "$LOGFILE.tmp"
-    critical "mv \"$LOGFILE.tmp\" \"$LOGFILE\""
-}
-
-restore_file() {
-    local actual="$( file_actual "$1" )"
-    local aliased="$( file_aliased "$1" )"
-    refpoint "Restore $actual"
-    critical "mkdir -p \"$( dirname "$actual" )\""
-    if [ -z "$OVERWRITE" ] && [ -e "$actual" ]; then
-        local id=0
-        while [ -e "$actual.$id" ]; do
-            let 'id++'
-        done
-        echo "File '$actual' already exists, using '$actual.$id' instead"
-        actual+=".$id"
-    fi
-    echo "$actual"
-    critical "mv \"$TRASH/$aliased\" \"$actual\""
-    critical "rm \"$TRASH/$aliased.info\""
-}
-    
-
-undo_del() {
-    : > "$LOGFILE.tmp"
-    refpoint "Rollback last deletion"
-    tac "$LOGFILE" |
-    {
-        while read -t 0.05 line; do
-            [[ -z "$1" ]] && break
-            restore_file "$line"
-        done
-        [ -n "$SANDBOX" ] && return
-        while read -t 0.05 line; do
-            echo "$line" >> "$LOGFILE.tmp"
-        done
-    }
-    critical "tac \"$LOGFILE.tmp\" > \"$LOGFILE\""
-    critical "rm \"$LOGFILE.tmp\""
-}
-
-restore_index() {
-    local line="$( get_line "$1" )"
-    restore_file "$line"
-}
-
-permanent_remove() {
-    local linenum="$( echo "$1" | cut -d" " -f1 )"
-    local aliased="$( file_aliased "$( get_line "$linenum" )" )"
-    refpoint "Delete permanently '$aliased'"
-    critical "rm -r \"$TRASH/$aliased.info\""
-    critical "rm -rf \"$TRASH/$aliased\""
-}
-
-help_fmt() {
-    awk -e "/<$1>/"' { show = 1; next }' \
-        -e '/<end>/ { show = 0 }' \
-        -e 'show { print }' \
-        "$HELP_LOC" |
-    sed -E \
-        -e 's,$,'"${__}"',; s,^  ,,' \
-        -e 's,!###,   '"${Ital}${Green}," \
-        -e 's,!##,'"${Bold}${Red}," \
-        -e 's, *!#,'"${Bold}${Green}," \
-        -e 's,&&&,'"\r\x1b[45C," \
-        -e 's,\?\?\?,'"\r\x1b[30C${Ital}${Green}?," \
-        -e 's,`(-[a-zA-Z_-]+)`,'"${Yellow}\\1${__},g" \
-        -e 's,`\$:([a-z]+)`,'"${Purple}\\1${__},g" \
-        -e 's,`([]()<>+|~[A-Z .-]+)`,'"${Bold}${Blue}\\1${__},g" \
-        -e 's,`'"('[^']*')"'`,'"${Green}\\1${__},g" \
-        -e 's,`(#[^`]+)`,'"${Grey}\\1${__},g" \
-        -e 's,<>((<[^>]|[^<]>|.)+)<>,'"${Ital}${Blue}\\1${__},g" \
-        -e 's,`~*([^`]+)`,'"${__}\\1${__},g" \
-        -e 's, ---,'"$( seq 65 | awk '{ printf "-" }' ),g" \
-        -e 's,!--,'"${Ital},g"
-}
-
-print_help() {
-    if [ -z "$1" ]; then
-        help_fmt 'overview'
-        return
-    fi
-    while [ -n "$1" ]; do
-        if [[ "$1" =~ [a-z]+ ]] && grep "<$1>" "$HELP_LOC"; then
-            help_fmt "$1"
-        else
-            efmt "${Bold}${Red}No such help menu ${Green}'$1'"
-            efmt "  Try one of"
-            efmt "    example, cmd, select,"
-            efmt "    info, rest, undo, del,"
-            efmt "    pat, fzf, idx"
-            efmt "  or leave blank"
-        fi
-        shift
-        if [ -n "$1" ]; then
-            seq `tput cols` | awk 'BEGIN { print "" } { printf "=" } END { print "\n" }'
-        fi
-    done
 }
 
 CMD=
@@ -480,6 +248,7 @@ fi
 
 SELECT=()
 select_files() {
+    load_ext 'query'
     shopt -s lastpipe
     {
         for i in "${SELECT_IDX[@]}"; do
@@ -503,15 +272,18 @@ select_files() {
 execute() {
     case "$CMD" in
         (info)
+            load_ext 'edit'
             for file in "${SELECT[@]}"; do
                 print_info "$( echo "$file" | cut -d' ' -f1 )"
             done
             exit 0
             ;;
         (undo)
+            load_ext 'edit'
             undo_del
             ;;
         (del)
+            load_ext 'edit'
             (( "${#SELECT[@]}" == 0 )) && return
             if [ -z "$SANDBOX" ]; then
                 fmt "This action will ${Bold}${Ital}_permanently_${__} delete"
@@ -533,12 +305,14 @@ execute() {
             fi
             ;;
         (rest)
+            load_ext 'edit'
             for file in "${SELECT[@]}"; do
                 restore_index "$( echo "$file" | cut -d' ' -f1 )"
             done
             clean_history
             ;;
         (help)
+            load_ext 'help'
             print_help "${FILES[@]}"
             exit 0
             ;;
