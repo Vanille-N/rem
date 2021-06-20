@@ -82,12 +82,16 @@ newname() {
 }
 
 file_actual() {
-    # Extract true file name from 'alias|name'
+    # Extract true file name from 'alias|name|timestamp'
     echo "$1" | cut -d'|' -f2
 }
 file_aliased() {
-    # Extract alias from 'alias|name'
+    # Extract alias from 'alias|name|timestamp'
     echo "$1" | cut -d'|' -f1
+}
+file_timestamp() {
+    # extract timestamp from 'alias|name|timestamp'
+    echo "$1" | cut -d'|' -f3
 }
 
 check_install() {
@@ -136,7 +140,7 @@ del_register() {
         local name=`newname`
         refpoint "Register $source as $name"
         critical "mkdir \"$REGISTRY/$name\""
-        critical "echo \"$name|$source\" >> \"$LOGFILE\""
+        critical "echo \"$name|$source|$( date '+%s' )\" >> \"$LOGFILE\""
         make_info "$name" "$source"
         critical "mv \"$source\" \"$REGISTRY/$name/file\""
     else

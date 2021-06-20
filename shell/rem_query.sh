@@ -93,7 +93,9 @@ interprete_timeframe() {
 list_time() {
     local current="$( date '+%s' )"
     local dt_old="$( echo "$1" | cut -d'-' -f2 | interprete_timeframe )"
+    [ -z "$dt_old" ] && exit 110
     local dt_new="$( echo "$1" | cut -d'-' -f1 | interprete_timeframe )"
+    [ -z "$dt_new" ] && exit 110
     local old=$(( current - dt_old ))
     local new=$(( current - dt_new ))
     local index=0
@@ -102,9 +104,7 @@ list_time() {
     while read -t 0.05 line; do
         let '++index'
         local actual="$( file_actual "$line" )"
-        local aliased="$( file_aliased "$line" )"
-        deleted="$( sed -n '2p' "$REGISTRY/$aliased/meta" )"
-        tdel="$( date -d "$deleted" '+%s' )"
+        local tdel="$( file_timestamp "$line" )"
         if (( old <= new )); then
             # Normal interval check
             if (( old <= tdel )) && (( tdel <= new )); then

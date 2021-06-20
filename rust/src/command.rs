@@ -95,19 +95,18 @@ impl Command {
                     "--time" | "-T" => do_take_while!(args, selector.add_time),
                     "--sandbox" | "-S" => sandbox = true,
                     "--overwrite" | "-O" => overwrite = true,
-                    "--" => {
-                        while let Some(arg) = args.next() {
-                            pos_args.push(arg);
-                        }
-                    }
+                    "--" => break,
                     _ => {
-                        if arg.chars().next() == Some('-') {
+                        if arg.starts_with('-') {
                             panic!("Unknown argument '{}'", arg);
                         }
                         pos_args.push(arg);
                     }
                 },
             }
+        }
+        for arg in args { // drain remaining args as positional (encountered '--')
+            pos_args.push(arg);
         }
         let action = match (help, undo, editor.into_inner()) {
             // Incompatibilities
@@ -194,3 +193,4 @@ impl OnceEd {
         self.data
     }
 }
+

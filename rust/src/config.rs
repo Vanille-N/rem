@@ -25,10 +25,10 @@ impl Config {
             }
         };
         let mut cfg = Config {
-            root: root.clone(),
             history: root.clone(),
             lock: root.clone(),
             registry: root.clone(),
+            root,
         };
         cfg.history.push("history");
         cfg.lock.push("lock");
