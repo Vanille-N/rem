@@ -1,0 +1,258 @@
+<overview>
+    !# Rem
+    !### Pseudo-deleter
+
+    i.e. "move to trash"
+    Safer and arguably more ergonomic than `$:rm` `-rf`,
+    allows for constant-time removal as well as file restoration
+
+    !## Usage:
+        `$:rem` `FILE ...`  &&& remove files
+        `$:rem` `ARGS`  &&& apply subcommands
+            ??? --help example
+
+    !## Modes:
+        Determine which subcommand to execute
+        Only one at a time
+        `-h`  `--help` `[MENU]`  &&& print this message
+        `-i`  `--info`  &&& print information on line
+        `-r`  `--rest`  &&& restore
+        `-u`  `--undo`  &&& undo last deletion (propagating)
+        `-d`  `--del`  &&& permanent deletion
+            ??? --help cmd
+            ??? --help (info|rest|undo|del)
+
+    !## Selectors:
+        Determine which files to select and apply commands to
+        If several are supplied their union is calculated
+        `-P`  `--pat` `[PATTERNS]`  &&& show files matching one of the patterns
+        `-F`  `--fzf`  &&& use fzf for finding
+        `-I`  `--idx` `[BEGIN]-[END]`  &&& index range
+        `-T`  `--time` `(>OLD|<YOUNG|YOUNG~OLD)`  &&& timeframe (deletion timestamp)
+            ??? --help select
+            ??? --help (pat|fzf|idx|time)
+
+    !## Other:
+        `-S`  `--sandbox`  &&& print commands instead of executing them
+        `-O`  `--overwrite`  &&& ignore if file to restore already exists
+        `--`  &&& everything that follows is a filename
+<end>
+<example>
+    !# Rem :: Example
+    !### Illustrations of usage
+
+    !-- Remove 'foo.txt'
+        `$:rem` `foo.txt`
+    
+    !-- Permanently delete all removed txt files
+        `$:rem` `--del` `--pat` `'\.txt\$'`
+
+    !-- Undo last removal
+        `$:rem` `--undo`
+
+    !-- Restore indexes 1 to 3, 10 to 12, and all interactively selected files
+        `$:rem` `--rest` `--idx` `1-3 10-12` `--fzf`
+
+    !-- Run in sandbox mode to see which commands are executed
+        `$:rem` `--sandbox` `--del` `--pat` `'.*'`
+
+    !-- Delete files older than 1 month
+        `$:rem` `--del` `--time` `>1M`
+<end>
+<info>
+    !# Rem :: Cmd :: Info
+    !### Query file data
+
+    The `--info` mode prints data about the file, it is essentially equivalent to
+
+        `$:basename` `FILE`
+        `$:date`
+        `$:exa` `-l` `FILE`
+        `$:file` `FILE`
+
+    with all information recorded _before_ the file was deleted
+    Among other things, it helps unambiguously distinguish files that had
+    the same name and location before they were deleted
+
+        (*) '`$:cargo` `install` `exa`', modern alternative for `$:ls` in Rust
+<end>
+<rest>
+    !# Rem :: Cmd :: Rest
+    !### Restore specific files
+
+    The `--rest` mode can restore removed files
+    It moves the file back to where it was deleted from, including
+    reconstructing its parent directory if needed
+
+    If the file already exists:
+        - if `--overwrite` (`-O`) is supplied it is replaced with the restored file
+        - otherwise the restored file is appended a unique number
+          ('foo.0' if 'foo' exists, 'foo.1' if 'foo.0' also exists, 'foo.2' etc.)
+<end>
+<undo>
+    !# Rem :: Cmd :: Undo
+    !### Restore last deleted batch
+
+    The sequence
+        $ `$:rem` `file-1 file-2 ... file_n`
+        $ `$:rem` `--undo`
+    is always a no_op. The `--undo` command precisely restores the last batch of files
+    that were removed.
+
+    If the last batch of files was partially modified using
+    any of `--del` or `--rest`, then `--undo` restores the rest of them.
+    If it was fully restored or deleted with `--del`, `--rest` or another `--undo`, then
+    the new `--undo` affects the previous batch.
+
+    !## Examples:
+        ---
+        $ `$:rem` `foo bar`
+        $ `$:rem` `--del` `--pat` `bar`  &&& `# deletes bar`
+        $ `$:rem` `--undo`  &&& `# restores foo`
+        ---
+        $ `$:rem` `foo bar`
+        $ `$:rem` `baz quux`
+        $ `$:rem` `--undo`  &&& `# restores baz and quux`
+        $ `$:rem` `--undo`  &&& `# restores foo and bar`
+        ---
+        $ `$:rem` `foo`
+        $ `$:rem` `bar`
+        $ `$:rem` `baz`
+        $ `$:rem` `--del` `--pat` `bar`  &&& `# deletes bar`
+        $ `$:rem` `--undo`  &&& `# restores baz`
+        $ `$:rem` `--undo`  &&& `# restores foo`
+        $ `$:rem` `--undo`  &&& `# does nothing`
+        ---
+<end>
+<del>
+    !# Rem :: Cmd :: Del
+    !### Permanent deletion
+
+    The selected files are permanently deleted, and any references
+    to them is purged from the Trash directory.
+
+    This action is absolutely not reversible, but it will ask for
+    confirmation after showing a list of all files to be deleted
+<end>
+<cmd>
+    !# Rem :: Cmd
+    !### Subcommands
+
+    Rem provides subcommands which can
+
+        permanently delete removed files  &&& `--del`
+        restore last batch of files  &&& `--undo`
+        selectively restore files  &&& `--rest`
+        query for data  &&& `--info`
+
+    All of them act upon all files selected through one of
+    the selection mechanisms
+<end>
+<pat>
+    !# Rem :: Select :: Pat
+    !### Regexp pattern selection
+
+    With `--pat`, files can be selected by means of a PCRE
+
+        `--pat` `[PATTERN] ...`
+
+    More that one pattern may be provided, the union is calculated
+    '`--pat` `foo bar baz`' is equivalent to '`--pat` `foo` `--pat` `bar` `--pat` `baz`'
+
+    The only exception is that arguments that follow `--pat` are taken
+    until an argument excluding the first starts with a '-'
+
+    To match several files that actually start with a '-', use distinct
+    `--pat` invocations.
+    There _is_ a difference between
+        '`--pat` `~~~-foo` `--pat` `~~~-bar`'  &&& Union of '-foo' and '-bar'
+    and
+        '`--pat` `~~~-foo` `-bar`'  &&& 'Unknown argument -bar'
+
+    Note that matching is not done with globbing: to match all files
+    ending in .x you should use `--pat` `'\.x$'` instead of `--pat` `'*.x'`
+    This may change in future versions.
+<end>
+<fzf>
+    !# Rem :: Select :: Fzf
+    !### Interactive fuzzy selector
+
+    `$:fzf` allows to easily select and unselect files with <Tab>,
+    filter the list by typing substrings, and view information on
+    each file by means of the integrated preview which shows
+    enough information to unambiguously differentiate files that
+    have the same name
+
+    For more information see <>https://github.com/junegunn/fzf<>
+<end>
+<idx>
+    !# Rem :: Select :: Idx
+    !### Reverse deletion order
+
+        `--idx` `[RANGE] ...`
+    where `RANGE` is of the form `[BEGIN]-[END]`
+    Calculates the union of all provided ranges
+
+    !## Examples:
+        `--idx` `10`  &&& file 10
+        `--idx` `2-5`  &&& files 2 to 5
+        `--idx` `3-`  &&& files 3 to end
+        `--idx` `~~~-10`  &&& files 1 to 10
+        `--idx` `~~~-`  &&& all files
+        `--idx` `~~~-3 5-7 10-`  &&& files 1 to 3 and 5 to 7 and 10 to end
+
+    1 is the most recently deleted file, bigger numbers mean older files
+    `--idx` is mostly meant to be used by scripts, e.g. the `--fzf` preview command
+    which can extract the index from the printed information then use it
+<end>
+<time>
+    !# Rem :: Select :: Time
+    !### Date of deletion
+
+        `--time` `[YOUNG]-[OLD]`
+
+    Where `YOUNG` and `OLD` are of the form `([DIGIT][DURATION])+`
+    with each `DIGIT` in decimal and `DURATION` among
+        
+        s  &&& Second
+        m = 60 * s  &&& Minute
+        h = 60 * m  &&& Hour
+        d = 24 * h  &&& Day
+        W = 7 * d  &&& Week
+        M = 30 * d  &&& Month
+        Y = 365 * d  &&& Year
+    
+    Durations are converted to seconds (d being the default if `DURATION` is absent),
+    then multiplied by the preceding digits (default 1),
+    then added together to produce a delta of timestamps within which the file is selected.
+    If `YOUNG` > `OLD` the timeframe is inverted.
+
+    !## Examples: 
+        `'-Y'`  &&& Deleted less that a year ago
+        `'3M4d-'`  &&& More than 3 months 4 days
+        `'M-3M'` &&& Between 1 and 3 months
+        `'1000s-1YY'`  &&& More than 1000 seconds but less than 2 years
+        `'1Y-6M'`  &&& Everything outside of the 6 months ~ 1 year range
+
+    ??? Note: as long as it is transmitted as a single argument,
+    ??? the timeframe descriptor may contain any amount of whitespace
+
+    ??? Note: while it is _allowed_, specifying the timeframe in
+    ??? one of the forms 'TIME', '-', '' is at best useless
+<end>
+<select>
+    !# Rem :: Select
+    !### File selection mechanisms
+
+    All subcommands except `--help` and `--undo` act on a set of
+    selected files: `--rest` restores them, `--del` deletes them,
+    `--info` queries them.
+
+    The thus selected files are specified using one or more
+    of the selectors
+        `--pat` `[PATTERN] ...`  &&& select files using a regexp
+        `--fzf`  &&& interactive selection
+        `--idx` `[RANGE] ...`  &&& range selection based on deletion order
+        `--time` `[TIMEFRAME] ...`  &&& select by date of deletion
+<end>
+
