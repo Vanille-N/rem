@@ -148,6 +148,40 @@ del_register() {
     fi
 }
 
+help_fmt() {
+    local f="$LOCATION/help/$1.ansi"
+    if [ -e "$f" ]; then
+        cat "$f"
+    elif [ -e "$LOCATION/help/main.raw" ]; then
+        efmt "${Bold}${Red}No such help menu ${Green}'$1'"
+        efmt "  Try one of"
+        efmt "    example, cmd, select,"
+        efmt "    info, rest, undo, del,"
+        efmt "    pat, fzf, idx"
+        efmt "  or leave blank"
+        exit 100
+    else
+        efmt "${Bold}${Red}No help generated"
+        efmt "  Try going to $LOCATION/help and running 'make'"
+        exit 200
+    fi
+}
+
+print_help() {
+    if [ -z "$1" ]; then
+        help_fmt 'main'
+        return
+    fi
+    while [ -n "$1" ]; do
+        help_fmt "$1"
+        shift
+        if [ -n "$1" ]; then
+            seq `tput cols` | awk 'BEGIN { print "" } { printf "=" } END { print "\n" }'
+        fi
+    done
+}
+
+
 CMD=
 SELECT_PAT=()
 SELECT_IDX=()
@@ -319,7 +353,6 @@ execute() {
             clean_history
             ;;
         (help)
-            load_ext 'help'
             print_help "${FILES[@]}"
             exit 0
             ;;

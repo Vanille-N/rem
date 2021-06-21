@@ -1,2 +1,9 @@
-doc
+# Rust artefacts
 target
+
+# Book
+doc
+
+# Aux help files
+*.ansi
+*.chap
