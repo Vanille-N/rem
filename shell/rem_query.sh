@@ -30,7 +30,7 @@ list_fzf() {
         echo "$index $actual"
     done |
     sed "s,$HOME,~," |
-    fzf --multi \
+    ${REM_FZF:-sk} --multi \
         --preview='\
             rem --info \
                 --idx "$( echo {} | cut -d" " -f1 )" \

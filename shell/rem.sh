@@ -19,6 +19,7 @@ REM_ENV=1
 
 HOME_SUB="s,$HOME,~,"
 
+
 esc_code() {
     echo "\x1b[${1}m"
 }
@@ -66,6 +67,19 @@ UNIMPLEMENTED() {
     efmt "${Bold}${Red}Unimplemented action '$1'"
     exit 200
 }
+
+case "$REM_LS" in
+    (''|exa|ls) ;;
+    (*) efmt "${Bold}${Red}Not an ls-type command: ${Green}'REM_LS=$REM_LS'"
+        efmt "  Use either ${Purple}'ls'${__} or ${Purple}'exa'${__}"
+        ;;
+esac
+case "$REM_FZF" in
+    (''|fzf|sk) ;;
+    (*) efmt "${Bold}${Red}Not an fzf-type command: ${Green}'REM_FZF=$REM_FZF'"
+        eftm "  Use either ${Purple}'fzf'${__} or ${Purple}'sk'${__}"
+        ;;
+esac
 
 randname() {
     echo "$RANDOM$RANDOM$RANDOM" | base64
@@ -128,7 +142,7 @@ make_info() {
     critical "basename \"$source\" > \"$infofile\""
     critical "date \"+%Y-%m-%d %H:%M:%S\" >> \"$infofile\""
     critical "echo \"\" >> \"$infofile\""
-    critical "exa -lh --color=always \"$source\" >> \"$infofile\""
+    critical "${REM_LS:exa} -lh --color=always \"$source\" >> \"$infofile\""
     critical "echo \"\" >> \"$infofile\""
     critical "file \"$source\" | sed 's,:,\\n,' >> \"$infofile\""
 }

@@ -271,6 +271,10 @@
         - `'registry/XYZ/meta'`  &&&   data about the file before its deletion
         - `'registry/XYZ/file'`  &&&   actual file
       - `'lock'`  &&& to guarantee exclusive execution
+
+    In addition, Rem will read the variables
+      - `'$REM_FZF'` to know its `$:fzf` command: default '`$:sk`', '`$:fzf`' also works
+      - `'$REM_LS'` to know its `$:ls` command: default '`$:exa` `-lh`', '`$:ls` `-l`' also works
 <end>
 <intro>
     !# Rem :: Intro
