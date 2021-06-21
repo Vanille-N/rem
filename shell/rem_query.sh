@@ -39,8 +39,8 @@ list_fzf() {
 }
 
 list_idx() {
-    local start="$( echo "$1" | cut -d'-' -f1 )"
-    local end="$( echo "$1" | cut -d'-' -f2 )"
+    local start="$( echo "$1" | cut -d':' -f1 )"
+    local end="$( echo "$1" | cut -d':' -f2 )"
     start="${start:-1}"
     end="${end:-0}"
     local index=0
@@ -92,9 +92,9 @@ interprete_timeframe() {
 
 list_time() {
     local current="$( date '+%s' )"
-    local dt_old="$( echo "$1" | cut -d'-' -f2 | interprete_timeframe )"
+    local dt_old="$( echo "$1" | cut -d':' -f2 | interprete_timeframe )"
     [ -z "$dt_old" ] && exit 110
-    local dt_new="$( echo "$1" | cut -d'-' -f1 | interprete_timeframe )"
+    local dt_new="$( echo "$1" | cut -d':' -f1 | interprete_timeframe )"
     [ -z "$dt_new" ] && exit 110
     local old=$(( current - dt_old ))
     local new=$(( current - dt_new ))

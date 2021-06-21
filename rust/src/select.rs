@@ -26,10 +26,7 @@ pub struct Index {
 
 impl Index {
     pub fn new(start: usize, end: usize) -> Self {
-        Self {
-            start,
-            end,
-        }
+        Self { start, end }
     }
 }
 
@@ -54,8 +51,10 @@ impl<'s> Selector<'s> {
     }
 
     pub fn push<S>(&mut self, sel: S)
-        where S: Select + 's {
-            self.0.push(Box::new(sel));
+    where
+        S: Select + 's,
+    {
+        self.0.push(Box::new(sel));
     }
 }
 impl Select for Pattern {

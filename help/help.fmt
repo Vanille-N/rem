@@ -191,16 +191,16 @@
     !### Reverse deletion order
 
         `--idx` `[RANGE] ...`
-    where `RANGE` is of the form `[BEGIN]-[END]`
+    where `RANGE` is of the form `[BEGIN]:[END]`
     Calculates the union of all provided ranges
 
     !## Examples:
         `--idx` `10`  &&& file 10
-        `--idx` `2-5`  &&& files 2 to 5
-        `--idx` `3-`  &&& files 3 to end
-        `--idx` `~~~-10`  &&& files 1 to 10
-        `--idx` `~~~-`  &&& all files
-        `--idx` `~~~-3 5-7 10-`  &&& files 1 to 3 and 5 to 7 and 10 to end
+        `--idx` `2:5`  &&& files 2 to 5
+        `--idx` `3:`  &&& files 3 to end
+        `--idx` `~~~:10`  &&& files 1 to 10
+        `--idx` `~~~:`  &&& all files
+        `--idx` `~~~:3 5:7 10:`  &&& files 1 to 3 and 5 to 7 and 10 to end
 
     1 is the most recently deleted file, bigger numbers mean older files
     `--idx` is mostly meant to be used by scripts, e.g. the `--fzf` preview command
@@ -210,7 +210,7 @@
     !# Rem :: Select :: Time
     !### Date of deletion
 
-        `--time` `[YOUNG]-[OLD]`
+        `--time` `[YOUNG]:[OLD]`
 
     Where `YOUNG` and `OLD` are of the form `([DIGIT][DURATION])+`
     with each `DIGIT` in decimal and `DURATION` among
@@ -229,17 +229,17 @@
     If `YOUNG` > `OLD` the timeframe is inverted.
 
     !## Examples: 
-        `'-Y'`  &&& Deleted less that a year ago
-        `'3M4d-'`  &&& More than 3 months 4 days
-        `'M-3M'` &&& Between 1 and 3 months
-        `'1000s-1YY'`  &&& More than 1000 seconds but less than 2 years
-        `'1Y-6M'`  &&& Everything outside of the 6 months ~ 1 year range
+        `':Y'`  &&& Deleted less that a year ago
+        `'3M4d:'`  &&& More than 3 months 4 days
+        `'M:3M'` &&& Between 1 and 3 months
+        `'1000s:1YY'`  &&& More than 1000 seconds but less than 2 years
+        `'1Y:6M'`  &&& Everything outside of the 6 months ~ 1 year range
 
     ??? Note: as long as it is transmitted as a single argument,
     ??? the timeframe descriptor may contain any amount of whitespace
 
     ??? Note: while it is _allowed_, specifying the timeframe in
-    ??? one of the forms 'TIME', '-', '' is at best useless
+    ??? one of the forms 'TIME', ':', '' is at best useless
 <end>
 <select>
     !# Rem :: Select
@@ -274,7 +274,7 @@
 
     In addition, Rem will read the variables
       - `'$REM_FZF'` to know its `$:fzf` command: default '`$:sk`', '`$:fzf`' also works
-      - `'$REM_LS'` to know its `$:ls` command: default '`$:exa` `-lh`', '`$:ls` `-l`' also works
+      - `'$REM_LS'` to know its `$:ls` command: default '`$:exa`', '`$:ls`' also works
 <end>
 <intro>
     !# Rem :: Intro

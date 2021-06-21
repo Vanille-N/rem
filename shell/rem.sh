@@ -246,7 +246,7 @@ parse_args() {
                 ;;
             (-I|--idx) check_file idx
                 SELECT_IDX+=( "$1" ); shift
-                while [ -n "$1" ] && [[ "$1" =~ ^([0-9]*-?[0-9]*)$ ]]; do
+                until [[ "$1" =~ ^(-.*|)$ ]]; do
                     SELECT_IDX+=( "$1" ); shift
                 done
                 HAS_SELECTION=1
