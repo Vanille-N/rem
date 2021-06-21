@@ -166,10 +166,10 @@ help_fmt() {
     local f="$LOCATION/help/$1.ansi"
     if [ -e "$f" ]; then
         cat "$f"
-    elif [ -e "$LOCATION/help/main.raw" ]; then
+    elif [ -e "$LOCATION/help/main.ansi" ]; then
         efmt "${Bold}${Red}No such help menu ${Green}'$1'"
         efmt "  Try one of"
-        efmt "    example, cmd, select,"
+        efmt "    examples, cmd, select,"
         efmt "    info, rest, undo, del,"
         efmt "    pat, fzf, idx"
         efmt "  or leave blank"
@@ -226,6 +226,12 @@ check_aux() {
     fi
 }
 
+empty_selectors() {
+    efmt "${Bold}${Red}Selector list is empty"
+    efmt "  $1 should take at least one selector"
+    exit 13
+}
+
 parse_args() {
     while [ -n "$1" ]; do
         local arg="$1"
@@ -238,6 +244,7 @@ parse_args() {
             (-d|--del) check_dup del; check_file del; CMD=del;;
             (-F|--fzf) check_file fzf; SELECT_FZF=1; HAS_SELECTION=1;;
             (-P|--pat) check_file pat
+                [ -v 1 ] || empty_selectors pat  
                 SELECT_PAT+=( "$1" ); shift
                 until [[ "$1" =~ ^(-.*|)$ ]]; do
                     SELECT_PAT+=( "$1" ); shift
@@ -245,6 +252,7 @@ parse_args() {
                 HAS_SELECTION=1
                 ;;
             (-I|--idx) check_file idx
+                [ -v 1 ] || empty_selectors idx
                 SELECT_IDX+=( "$1" ); shift
                 until [[ "$1" =~ ^(-.*|)$ ]]; do
                     SELECT_IDX+=( "$1" ); shift
@@ -252,6 +260,7 @@ parse_args() {
                 HAS_SELECTION=1
                 ;;
             (-T|--time) check_file time
+                [ -v 1 ] || empty_selectors time
                 SELECT_TIME+=( "$1" ); shift
                 until [[ "$1" =~ ^(-.*|)$ ]]; do
                     SELECT_TIME+=( "$1" ); shift

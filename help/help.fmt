@@ -24,10 +24,10 @@
     !## Selectors:
         Determine which files to select and apply commands to
         If several are supplied their union is calculated
-        `-P`  `--pat` `[PATTERNS]`  &&& show files matching one of the patterns
+        `-P`  `--pat` `PATTERN ...`  &&& show files matching one of the patterns
         `-F`  `--fzf`  &&& use fzf for finding
-        `-I`  `--idx` `[BEGIN]-[END]`  &&& index range
-        `-T`  `--time` `(>OLD|<YOUNG|YOUNG~OLD)`  &&& timeframe (deletion timestamp)
+        `-I`  `--idx` `(INDEX|[START]:[END]) ...`  &&& index range
+        `-T`  `--time` `(TIME|[START]:[END])`  &&& timeframe (deletion timestamp)
             ??? --help select, pat, fzf, idx, time
 
     !## Other:
@@ -52,13 +52,13 @@
         `$:rem` `--undo`
 
     !-- Restore indexes 1 to 3, 10 to 12, and all interactively selected files
-        `$:rem` `--rest` `--idx` `1-3 10-12` `--fzf`
+        `$:rem` `--rest` `--idx` `1:3 10:12` `--fzf`
 
     !-- Run in sandbox mode to see which commands are executed
         `$:rem` `--sandbox` `--del` `--pat` `'.*'`
 
     !-- Delete files older than 1 month
-        `$:rem` `--del` `--time` `>1M`
+        `$:rem` `--del` `--time` `1M:`
 <end>
 <info>
     !# Rem :: Cmd :: Info
@@ -75,7 +75,8 @@
     Among other things, it helps unambiguously distinguish files that had
     the same name and location before they were deleted
 
-        (*) '`$:cargo` `install` `exa`', modern alternative for `$:ls` in Rust
+        (*) <>https://github.com/ogham/exa<>, modern alternative for `$:ls` in Rust
+            `$:ls` can also be used instead by setting `REM_LS`=`'ls'`
 <end>
 <rest>
     !# Rem :: Cmd :: Rest
@@ -155,7 +156,7 @@
 
     With `--pat`, files can be selected by means of a PCRE
 
-        `--pat` `[PATTERN] ...`
+        `--pat` `PATTERN ...`
 
     More that one pattern may be provided, the union is calculated
     '`--pat` `foo bar baz`' is equivalent to '`--pat` `foo` `--pat` `bar` `--pat` `baz`'
@@ -172,7 +173,6 @@
 
     Note that matching is not done with globbing: to match all files
     ending in .x you should use `--pat` `'\.x$'` instead of `--pat` `'*.x'`
-    This may change in future versions.
 <end>
 <fzf>
     !# Rem :: Select :: Fzf
@@ -185,12 +185,14 @@
     have the same name
 
     For more information see <>https://github.com/junegunn/fzf<>
+    You can also use `$:sk` <>https://github.com/lotabout/skim<> 
+    Set the variable `REM_FZF` appropriately
 <end>
 <idx>
     !# Rem :: Select :: Idx
     !### Reverse deletion order
 
-        `--idx` `[RANGE] ...`
+        `--idx` `RANGE ...`
     where `RANGE` is of the form `[BEGIN]:[END]`
     Calculates the union of all provided ranges
 
@@ -233,7 +235,7 @@
         `'3M4d:'`  &&& More than 3 months 4 days
         `'M:3M'` &&& Between 1 and 3 months
         `'1000s:1YY'`  &&& More than 1000 seconds but less than 2 years
-        `'1Y:6M'`  &&& Everything outside of the 6 months ~ 1 year range
+        `'1Y:6M'`  &&& Everything _outside_ of the 6 months ~ 1 year range
 
     ??? Note: as long as it is transmitted as a single argument,
     ??? the timeframe descriptor may contain any amount of whitespace
@@ -251,10 +253,10 @@
 
     The thus selected files are specified using one or more
     of the selectors
-        `--pat` `[PATTERN] ...`  &&& select files using a regexp
+        `--pat` `PATTERN ...`  &&& select files using a regexp
         `--fzf`  &&& interactive selection
-        `--idx` `[RANGE] ...`  &&& range selection based on deletion order
-        `--time` `[TIMEFRAME] ...`  &&& select by date of deletion
+        `--idx` `RANGE ...`  &&& range selection based on deletion order
+        `--time` `TIMEFRAME ...`  &&& select by date of deletion
 <end>
 <config>
     !# Rem :: Config

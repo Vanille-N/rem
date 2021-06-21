@@ -97,12 +97,14 @@ pub struct Selector {
 pub enum Error {
     NonExclusiveCmd(&'static str, &'static str),
     TooManyArgs(&'static str),
+    EmptySelectorList(&'static str),
     ThreePartRange(String),
     InvalidIndex(String),
+    UnknownArg(String),
 }
 
 macro_rules! do_take_while {
-    ( $args:expr, $( $insertion:tt )+ ) => {{
+    ( $args:expr, $label:expr, $( $insertion:tt )+ ) => {{
         let mut first = true;
         while let Some(s) = $args.peek() {
             if first || s.as_ref().chars().next() != Some('-') {
@@ -111,6 +113,9 @@ macro_rules! do_take_while {
                 break;
             }
             first = false;
+        }
+        if first {
+            return Err(Error::EmptySelectorList($label));
         }
     }}
 }
@@ -143,15 +148,15 @@ impl Command {
                     "--rest" | "-r" => editor.set(Editor::Restore)?,
                     "--del" | "-d" => editor.set(Editor::Delete)?,
                     "--fzf" | "-F" => selector.add_fzf(),
-                    "--pat" | "-P" => do_take_while!(args, selector.add_pat),
-                    "--idx" | "-I" => do_take_while!(args, selector.add_idx),
-                    "--time" | "-T" => do_take_while!(args, selector.add_time),
+                    "--pat" | "-P" => do_take_while!(args, "pat", selector.add_pat),
+                    "--idx" | "-I" => do_take_while!(args, "idx", selector.add_idx),
+                    "--time" | "-T" => do_take_while!(args, "time", selector.add_time),
                     "--sandbox" | "-S" => sandbox = true,
                     "--overwrite" | "-O" => overwrite = true,
                     "--" => break,
                     _ => {
                         if arg.as_ref().starts_with('-') {
-                            panic!("Unknown argument '{}'", arg.as_ref());
+                            return Err(Error::UnknownArg(arg.as_ref().to_string()));
                         }
                         pos_args.push(arg.as_ref().to_string());
                     }
@@ -310,5 +315,19 @@ mod test {
                 File("bar.sh".to_string())
             ])
         );
+    }
+
+    #[test]
+    fn selectors_capture() {
+        let ended = Command::parse(&["-I", "1", "2", "3", "-P", ""]).unwrap();
+        assert_eq!(ended.action, Action::Edit(
+                None,
+                Selector {
+                    fzf: false,
+                    idx: vec![Index("1".to_string()), Index("2".to_string()), Index("3".to_string())],
+                    pat: vec![Pattern("".to_string())],
+                    time: vec![],
+                }
+        ));
     }
 }
