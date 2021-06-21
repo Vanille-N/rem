@@ -15,12 +15,13 @@ help_fmt() {
         -e 's,$,'"${__}"',; s,^  ,,' \
         -e 's,!###,   '"${Ital}${Green}," \
         -e 's,!##,'"${Bold}${Red}," \
+        -e 's,!\+\+,'"${Bold}${Green}," \
         -e 's, *!#,'"${Bold}${Green}," \
         -e 's,&&&,'"\r\x1b[45C," \
         -e 's,\?\?\?,'"\r\x1b[30C${Ital}${Green}?," \
         -e 's,`(-[a-zA-Z_-]+)`,'"${Yellow}\\1${__},g" \
         -e 's,`\$:([a-z]+)`,'"${Purple}\\1${__},g" \
-        -e 's,`([]()<>+|~[A-Z .-]+)`,'"${Bold}${Blue}\\1${__},g" \
+        -e 's,`([]()<>+|~[A-Z _.-]+)`,'"${Bold}${Blue}\\1${__},g" \
         -e 's,`'"('[^']*')"'`,'"${Green}\\1${__},g" \
         -e 's,`(#[^`]+)`,'"${Grey}\\1${__},g" \
         -e 's,<>((<[^>]|[^<]>|.)+)<>,'"${Ital}${Blue}\\1${__},g" \
@@ -31,11 +32,11 @@ help_fmt() {
 
 print_help() {
     if [ -z "$1" ]; then
-        help_fmt 'overview'
+        help_fmt 'main'
         return
     fi
     while [ -n "$1" ]; do
-        if [[ "$1" =~ [a-z]+ ]] && grep "<$1>" "$HELP_LOC"; then
+        if [[ "$1" =~ [a-z]+ ]] && grep "<$1>" "$HELP_LOC" &>/dev/null; then
             help_fmt "$1"
         else
             efmt "${Bold}${Red}No such help menu ${Green}'$1'"

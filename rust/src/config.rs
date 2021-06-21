@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::path::{PathBuf, Path};
+use std::path::{Path, PathBuf};
 
 #[derive(Debug)]
 pub struct Config {
@@ -13,16 +13,14 @@ impl Config {
     pub fn getenv() -> Self {
         let root = match std::env::var("REM_ROOT") {
             Ok(s) => PathBuf::from(s),
-            Err(_) => {
-                match std::env::var("HOME") {
-                    Ok(s) => {
-                        let mut path = PathBuf::from(s);
-                        path.push(".trash");
-                        path
-                    }
-                    Err(_) => PathBuf::from("/tmp/trash"),
+            Err(_) => match std::env::var("HOME") {
+                Ok(s) => {
+                    let mut path = PathBuf::from(s);
+                    path.push(".trash");
+                    path
                 }
-            }
+                Err(_) => PathBuf::from("/tmp/trash"),
+            },
         };
         let mut cfg = Config {
             history: root.clone(),

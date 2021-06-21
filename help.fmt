@@ -1,5 +1,5 @@
-<overview>
-    !# Rem
+<main>
+    !# Rem :: Main
     !### Pseudo-deleter
 
     i.e. "move to trash"
@@ -8,19 +8,18 @@
 
     !## Usage:
         `$:rem` `FILE ...`  &&& remove files
-        `$:rem` `ARGS`  &&& apply subcommands
-            ??? --help example
+        `$:rem` `[COMMAND]` `[SELECTOR] ...`  &&& apply subcommands
+            ??? --help examples
 
-    !## Modes:
+    !## Commands:
         Determine which subcommand to execute
         Only one at a time
-        `-h`  `--help` `[MENU]`  &&& print this message
-        `-i`  `--info`  &&& print information on line
-        `-r`  `--rest`  &&& restore
+        `-h`  `--help` `[MENU]`  &&& print this page (default) or page `MENU`
+        `-i`  `--info`  &&& print information on selected entries
+        `-r`  `--rest`  &&& restore entries
         `-u`  `--undo`  &&& undo last deletion (propagating)
         `-d`  `--del`  &&& permanent deletion
-            ??? --help cmd
-            ??? --help (info|rest|undo|del)
+            ??? --help cmd, info, rest, undo, del
 
     !## Selectors:
         Determine which files to select and apply commands to
@@ -29,16 +28,18 @@
         `-F`  `--fzf`  &&& use fzf for finding
         `-I`  `--idx` `[BEGIN]-[END]`  &&& index range
         `-T`  `--time` `(>OLD|<YOUNG|YOUNG~OLD)`  &&& timeframe (deletion timestamp)
-            ??? --help select
-            ??? --help (pat|fzf|idx|time)
+            ??? --help select, pat, fzf, idx, time
 
     !## Other:
         `-S`  `--sandbox`  &&& print commands instead of executing them
         `-O`  `--overwrite`  &&& ignore if file to restore already exists
         `--`  &&& everything that follows is a filename
+
+    ??? Follow the --help tags to see more details
+    ??? Other pages: intro, config
 <end>
-<example>
-    !# Rem :: Example
+<examples>
+    !# Rem :: Examples
     !### Illustrations of usage
 
     !-- Remove 'foo.txt'
@@ -255,4 +256,60 @@
         `--idx` `[RANGE] ...`  &&& range selection based on deletion order
         `--time` `[TIMEFRAME] ...`  &&& select by date of deletion
 <end>
+<config>
+    !# Rem :: Config
+    !### Locations
+
+    Rem will place its folder, by order of precedence :
+      - in `'$REM_ROOT'` if the variable is declared
+      - in `'$HOME/.trash'` otherwise
+      - in `'/tmp/trash'` in the unlikely event that `'$HOME'` is undefined
+
+    Inside this folder, it will create
+      - `'history'`  &&& record past transactions
+      - `'registry'`  &&& store actual files
+        - `'registry/XYZ/meta'`  &&&   data about the file before its deletion
+        - `'registry/XYZ/file'`  &&&   actual file
+      - `'lock'`  &&& to guarantee exclusive execution
+<end>
+<intro>
+    !# Rem :: Intro
+    !### Motivation
+    
+    Rem is an alternative to `$:rm`. Why would `$:rm` even need an alternative ?
+    You may be interested in using Rem if you agree to the following premises :
+
+    !## (-) rm is too dangerous with -rf and not powerful enough without
+         using '`$:alias` `rm`=`'/bin/rm -rf'`' is a recipe for disaster
+         but it's still inconvenient having to type `-rf` manually
+
+    !## (-) rm executes slower for large directories than for single files
+         For such a simple task I prefer consistent execution speeds
+
+    !## (-) Most of the time rm is not used to free disk space
+         Daily use of `$:rm` is meant to clean up the current directory,
+         not because the disk is getting full
+
+    !## (-) Sometimes mistakes are made
+         Backups are not enough to protect from all `$:rm` accidents
+
+    Rem is geared specifically towards these observations:
+
+    !++ (+) Rem treats files and directories alike
+        No special handling of directories is required
+
+    !++ (+) Rem performs removal in constant time regardless of size
+        The core of Rem is just a wrapper around `$:mv`, it doesn't get
+        slower for deep directories
+
+    !++ (+) Rem does not delete files, it just moves them out of the way
+        Disk space is not freed right away, but it's easy to come back
+        later and delete it all at once for real with `--del`
+
+    !++ (+) Rem can undo an accident or restore an old file
+        With `--undo` or `--rest`, accidentally deleting a critical file
+        costs no more than a few seconds
+
+<end>
+
 

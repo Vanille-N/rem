@@ -1,3 +1,6 @@
+use crate::select::{self, Select, Entries, Entry};
+use std::collections::BTreeSet;
+
 #[derive(Debug)]
 pub struct Command {
     action: Action,
@@ -8,17 +11,66 @@ pub struct Command {
 
 #[derive(Debug)]
 pub enum Action {
-    Remove(FileList),
+    Remove(Vec<File>),
     Edit(Option<Editor>, Selector),
     Undo,
-    Help(HelpList),
+    Help(Vec<Help>),
 }
 
-pub type FileList = Vec<String>;
-pub type HelpList = Vec<String>;
-pub type PatternList = Vec<String>;
-pub type IndexList = Vec<String>;
-pub type TimeList = Vec<String>;
+#[derive(Debug, Clone)]
+pub struct File(String);
+
+#[derive(Debug, Clone)]
+pub struct Help(String);
+
+#[derive(Debug, Clone)]
+pub struct Pattern(String);
+impl Pattern {
+    pub fn into(self) -> Result<select::Pattern, Error> {
+        unimplemented!()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Index(String);
+impl Index {
+    pub fn into(self) -> Result<select::Index, Error> {
+        let mut parts = self.0.split('-');
+        let start = parts.next();
+        let end = parts.next();
+        if parts.next().is_some() {
+            return Err(Error::ThreePartRange(self.0.clone()));
+        }
+        let start = match start.unwrap() {
+            "" => 0,
+            s => {
+                match s.parse::<usize>() {
+                    Ok(n) => n,
+                    Err(_) => return Err(Error::InvalidIndex(s.to_string())),
+                }
+            }
+        };
+        let end = match end {
+            None => start,
+            Some("") => std::usize::MAX,
+            Some(s) => {
+                match s.parse::<usize>() {
+                    Ok(n) => n,
+                    Err(_) => return Err(Error::InvalidIndex(s.to_string())),
+                }
+            }
+        };
+        Ok(select::Index::new(start, end))
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Time(String);
+impl Time {
+    pub fn into(self) -> Result<select::Time, Error> {
+        unimplemented!()
+    }
+}
 
 #[derive(Debug, Clone, Copy)]
 pub enum Editor {
@@ -39,9 +91,9 @@ impl Editor {
 
 #[derive(Debug, Default)]
 pub struct Selector {
-    pat: PatternList,
-    idx: IndexList,
-    time: TimeList,
+    pat: Vec<Pattern>,
+    idx: Vec<Index>,
+    time: Vec<Time>,
     fzf: bool,
 }
 
@@ -49,6 +101,8 @@ pub struct Selector {
 pub enum Error {
     NonExclusiveCmd(&'static str, &'static str),
     TooManyArgs(&'static str),
+    ThreePartRange(String),
+    InvalidIndex(String),
 }
 
 macro_rules! do_take_while {
@@ -71,7 +125,9 @@ impl Command {
     }
 
     pub fn parse<I>(args: I) -> Result<Self, Error>
-    where I: Iterator<Item = String> {
+    where
+        I: Iterator<Item = String>,
+    {
         let mut pos_args = Vec::new();
         let mut selector = Selector::default();
         let mut help = false;
@@ -105,7 +161,8 @@ impl Command {
                 },
             }
         }
-        for arg in args { // drain remaining args as positional (encountered '--')
+        for arg in args {
+            // drain remaining args as positional (encountered '--')
             pos_args.push(arg);
         }
         let action = match (help, undo, editor.into_inner()) {
@@ -114,7 +171,7 @@ impl Command {
             (true, _, Some(ed)) => return Err(Error::NonExclusiveCmd("help", ed.as_str())),
             (_, true, Some(ed)) => return Err(Error::NonExclusiveCmd("undo", ed.as_str())),
             // Ok
-            (true, _, _) => Action::Help(pos_args),
+            (true, _, _) => Action::Help(pos_args.into_iter().map(Help).collect()),
             (_, true, _) => {
                 if !pos_args.is_empty() {
                     return Err(Error::TooManyArgs("undo"));
@@ -131,7 +188,7 @@ impl Command {
                 if pos_args.is_empty() {
                     Action::Edit(None, selector)
                 } else {
-                    Action::Remove(pos_args)
+                    Action::Remove(pos_args.into_iter().map(File).collect())
                 }
             }
         };
@@ -158,15 +215,32 @@ impl Selector {
     }
 
     pub fn add_pat(&mut self, pat: String) {
-        self.pat.push(pat);
+        self.pat.push(Pattern(pat));
     }
 
     pub fn add_idx(&mut self, idx: String) {
-        self.idx.push(idx);
+        self.idx.push(Index(idx));
     }
 
     pub fn add_time(&mut self, time: String) {
-        self.time.push(time);
+        self.time.push(Time(time));
+    }
+
+    pub fn into(self) -> Result<select::Selector<'static>, Error> {
+        let mut sel = select::Selector::new();
+        for p in self.pat {
+            sel.push(p.into()?);
+        }
+        for t in self.time {
+            sel.push(t.into()?);
+        }
+        for i in self.idx {
+            sel.push(i.into()?);
+        }
+        if self.fzf {
+            sel.push(select::Fzf {});
+        }
+        Ok(sel)
     }
 }
 
@@ -185,7 +259,10 @@ impl OnceEd {
             self.data = Some(new);
             Ok(())
         } else {
-            Err(Error::NonExclusiveCmd(self.data.unwrap().as_str(), new.as_str()))
+            Err(Error::NonExclusiveCmd(
+                self.data.unwrap().as_str(),
+                new.as_str(),
+            ))
         }
     }
 
@@ -193,4 +270,3 @@ impl OnceEd {
         self.data
     }
 }
-
