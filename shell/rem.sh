@@ -179,7 +179,11 @@ make_info() {
 
 del_register() {
     # Remove and add to registry
-    local source="`pwd`/$1"
+    local source=$( readlink -m "$1" )
+    if [[ "$source" == "$HOME" ]]; then
+        efmt "${Bold}${Red}Cannot move out home directory"
+        exit 15
+    fi
     if [ -e "$source" ]; then
         local name=`newname`
         refpoint "Register $source as $name"
