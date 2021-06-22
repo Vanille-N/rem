@@ -277,6 +277,8 @@
     In addition, Rem will read the variables
       - `'$REM_FZF'` to know its `$:fzf` command: default '`$:sk`', '`$:fzf`' also works
       - `'$REM_LS'` to know its `$:ls` command: default '`$:exa`', '`$:ls`' also works
+      In both cases, the value of the variable takes precedence. If it is unset the
+      default is checked, and if the default is not installed the fallback is used.
 <end>
 <intro>
     !# Rem :: Intro

@@ -69,15 +69,45 @@ UNIMPLEMENTED() {
 }
 
 case "$REM_LS" in
-    (''|exa|ls) ;;
+    (exa|ls)
+        if ! which "$REM_LS" &>/dev/null; then
+            efmt "${Bold}${Red}REM_LS is set to '$REM_LS' yet the corresponding"
+            efmt "${Bold}${Red}command is not installed"
+            exit 30
+        fi
+        ;;
+    ('')
+        if which exa &>/dev/null; then
+            export REM_LS=exa
+        else # I don't think we need to check that ls in installed...
+            export REM_LS=ls
+        fi
+        ;;
     (*) efmt "${Bold}${Red}Not an ls-type command: ${Green}'REM_LS=$REM_LS'"
         efmt "  Use either ${Purple}'ls'${__} or ${Purple}'exa'${__}"
+        exit 31
         ;;
 esac
 case "$REM_FZF" in
-    (''|fzf|sk) ;;
+    (fzf|sk)
+        if ! which "$REM_FZF" &>/dev/null; then
+            efmt "${Bold}${Red}REM_FZF is set to '$REM_FZF' yet the corresponding"
+            efmt "${Bold}${Red}command is not installed"
+            exit 30
+        fi
+        ;;
+    ('')
+        if which sk &>/dev/null; then
+            export REM_FZF=sk
+        elif which fzf &>/dev/null; then
+            export REM_FZF=fzf
+        else
+            efmt "${Bold}${Red}REM_FZF is unset and neither fzf nor sk is installed"
+            exit 30
+        fi;;
     (*) efmt "${Bold}${Red}Not an fzf-type command: ${Green}'REM_FZF=$REM_FZF'"
         eftm "  Use either ${Purple}'fzf'${__} or ${Purple}'sk'${__}"
+        exit 31
         ;;
 esac
 
@@ -142,7 +172,7 @@ make_info() {
     critical "basename \"$source\" > \"$infofile\""
     critical "date \"+%Y-%m-%d %H:%M:%S\" >> \"$infofile\""
     critical "echo \"\" >> \"$infofile\""
-    critical "${REM_LS:exa} -lh --color=always \"$source\" >> \"$infofile\""
+    critical "${REM_LS} -lh --color=always \"$source\" >> \"$infofile\""
     critical "echo \"\" >> \"$infofile\""
     critical "file \"$source\" | sed 's,:,\\n,' >> \"$infofile\""
 }
