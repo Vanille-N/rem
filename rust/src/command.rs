@@ -1,5 +1,25 @@
 use crate::select::{self, Entries, Entry, Select};
 use std::collections::BTreeSet;
+use std::fmt;
+
+
+macro_rules! esc {
+    ( $( $c:tt );+ ) => {{
+        format!("\x1b[{}m", stringify!($( $c );+))
+    }};
+    ( ) => {
+        esc![0]
+    };
+}
+
+const RED: u8 = 91;
+const BOLD: u8 = 1;
+const ITAL: u8 = 3;
+const GREEN: u8 = 92;
+const BLUE: u8 = 94;
+const YELLOW: u8 = 93;
+const GREY: u8 = 97;
+const PURPLE: u8 = 95;
 
 #[derive(Debug)]
 pub struct Command {
@@ -27,7 +47,11 @@ pub struct Help(String);
 pub struct Pattern(String);
 impl Pattern {
     pub fn into(self) -> Result<select::Pattern, Error> {
-        unimplemented!()
+        match regex::Regex::new(&self.0) {
+            Ok(re) => Ok(select::Pattern::new(re)),
+            Err(regex::Error::Syntax(s)) => Err(Error::InvalidRegexSyntax(self.0, s)),
+            Err(_) => Err(Error::RegexFailure(self.0)),
+        }
     }
 }
 
@@ -42,7 +66,7 @@ impl Index {
             return Err(Error::ThreePartRange(self.0.clone()));
         }
         let start = match start.unwrap() {
-            "" => 0,
+            "" => 1,
             s => match s.parse::<usize>() {
                 Ok(n) => n,
                 Err(_) => return Err(Error::InvalidIndex(s.to_string())),
@@ -56,6 +80,9 @@ impl Index {
                 Err(_) => return Err(Error::InvalidIndex(s.to_string())),
             },
         };
+        if start > end {
+            eprintln!("{}", Warning::EmptyRange(self.0.clone(), start as u64, end as u64));
+        }
         Ok(select::Index::new(start, end))
     }
 }
@@ -63,8 +90,57 @@ impl Index {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Time(String);
 impl Time {
+    fn delta_time(s: &str) -> Result<u64, Error> {
+        let mut acc = 0;
+        let mut curr = None;
+        for c in s.chars() {
+            match c {
+                '0'..='9' => {
+                    let base = curr.unwrap_or(0) * 10;
+                    let add = c.to_digit(10).unwrap() as u64;
+                    curr = Some(base + add);
+                }
+                's' | 'm' | 'h' | 'D' | 'W' | 'M' | 'Y' => {
+                    let multiplier = match c {
+                        's' => 1,
+                        'm' => 60,
+                        'h' => 60 * 60,
+                        'D' => 60 * 60 * 24,
+                        'W' => 60 * 60 * 24 * 7,
+                        'M' => 60 * 60 * 24 * 30,
+                        'Y' => 60 * 60 * 24 * 365,
+                        _ => unreachable!(),
+                    };
+                    acc += curr.unwrap_or(1) * multiplier;
+                    curr = None;
+                }
+                c if c.is_whitespace() => {}
+                _ => return Err(Error::WrongDuration(c)),
+            }
+        }
+        Ok(acc)
+    }
+
     pub fn into(self) -> Result<select::Time, Error> {
-        unimplemented!()
+        let mut parts = self.0.split(':');
+        let start = parts.next();
+        let end = parts.next();
+        if parts.next().is_some() {
+            return Err(Error::ThreePartRange(self.0.clone()));
+        }
+        let start = match start.unwrap() {
+            "" => 0,
+            s => Self::delta_time(s)?,
+        };
+        let end = match end {
+            None => start,
+            Some("") => u64::MAX,
+            Some(s) => Self::delta_time(s)?,
+        };
+        if start > end {
+            eprintln!("{}", Warning::EmptyRange(self.0.clone(), start, end));
+        }
+        Ok(select::Time::new(start, end))
     }
 }
 
@@ -87,6 +163,7 @@ impl Editor {
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct Selector {
+    active: bool,
     pat: Vec<Pattern>,
     idx: Vec<Index>,
     time: Vec<Time>,
@@ -96,11 +173,33 @@ pub struct Selector {
 #[derive(Debug)]
 pub enum Error {
     NonExclusiveCmd(&'static str, &'static str),
-    TooManyArgs(&'static str),
+    TooManyArgs(&'static str, Vec<String>),
     EmptySelectorList(&'static str),
     ThreePartRange(String),
     InvalidIndex(String),
     UnknownArg(String),
+    UndoUselessSelector(Selector),
+    RemoveUselessSelector(Selector),
+    WrongDuration(char),
+    InvalidRegexSyntax(String, String),
+    RegexFailure(String),
+}
+
+#[derive(Debug)]
+enum Warning {
+    EmptyRange(String, u64, u64),
+}
+
+impl fmt::Display for Warning {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Warning::EmptyRange(original, start, end) => {
+                writeln!(f, "{}Empty range cannot match{}", esc![BOLD;RED], esc![])?;
+                writeln!(f, "\tRange pattern '{}' interpreted as {}..={} is useless since it will never match", original, start, end)?;
+            }
+        }
+        Ok(())
+    }
 }
 
 macro_rules! do_take_while {
@@ -176,13 +275,16 @@ impl Command {
             (true, _, _) => Action::Help(pos_args.into_iter().map(Help).collect()),
             (_, true, _) => {
                 if !pos_args.is_empty() {
-                    return Err(Error::TooManyArgs("undo"));
+                    return Err(Error::TooManyArgs("undo", pos_args));
+                }
+                if selector.active {
+                    return Err(Error::UndoUselessSelector(selector));
                 }
                 Action::Undo
             }
             (_, _, Some(ed)) => {
                 if !pos_args.is_empty() {
-                    return Err(Error::TooManyArgs(ed.as_str()));
+                    return Err(Error::TooManyArgs(ed.as_str(), pos_args));
                 }
                 Action::Edit(Some(ed), selector)
             }
@@ -190,6 +292,9 @@ impl Command {
                 if pos_args.is_empty() {
                     Action::Edit(None, selector)
                 } else {
+                    if selector.active {
+                        return Err(Error::RemoveUselessSelector(selector));
+                    }
                     Action::Remove(pos_args.into_iter().map(File).collect())
                 }
             }
@@ -214,21 +319,25 @@ impl Selector {
 
     pub fn add_fzf(&mut self) {
         self.fzf = true;
+        self.active = true;
     }
 
     pub fn add_pat(&mut self, pat: String) {
         self.pat.push(Pattern(pat));
+        self.active = true;
     }
 
     pub fn add_idx(&mut self, idx: String) {
         self.idx.push(Index(idx));
+        self.active = true;
     }
 
     pub fn add_time(&mut self, time: String) {
         self.time.push(Time(time));
+        self.active = true;
     }
 
-    pub fn into(self) -> Result<select::Selector<'static>, Error> {
+    pub fn into(self) -> Result<select::Selector, Error> {
         let mut sel = select::Selector::new();
         for p in self.pat {
             sel.push(p.into()?);
@@ -273,8 +382,22 @@ impl OnceEd {
     }
 }
 
+macro_rules! assert_matches {
+    ( $obj:expr, $target:pat ) => {{
+        let obj = $obj;
+        if !matches!(obj, $target) {
+            panic!(
+                "{:?} should match {:?} but does not",
+                obj,
+                stringify!($target)
+            );
+        }
+    }};
+}
+
 mod test {
     use super::*;
+    use crate::select;
     #[test]
     fn flags_are_detected() {
         let both = Command::parse(&["-S", "-O", "-F", "-I", "3-"]).unwrap();
@@ -298,6 +421,7 @@ mod test {
             Action::Edit(
                 Some(Editor::Delete),
                 Selector {
+                    active: true,
                     fzf: false,
                     idx: vec![Index("3:7".to_string())],
                     pat: vec![],
@@ -320,14 +444,89 @@ mod test {
     #[test]
     fn selectors_capture() {
         let ended = Command::parse(&["-I", "1", "2", "3", "-P", ""]).unwrap();
-        assert_eq!(ended.action, Action::Edit(
+        assert_eq!(
+            ended.action,
+            Action::Edit(
                 None,
                 Selector {
+                    active: true,
                     fzf: false,
-                    idx: vec![Index("1".to_string()), Index("2".to_string()), Index("3".to_string())],
+                    idx: vec![
+                        Index("1".to_string()),
+                        Index("2".to_string()),
+                        Index("3".to_string())
+                    ],
                     pat: vec![Pattern("".to_string())],
                     time: vec![],
                 }
-        ));
+            )
+        );
+    }
+
+    #[test]
+    fn errors() {
+        let non_exclusive1 = Command::parse(&["--help", "--rest", "-P", "foo"]);
+        assert_matches!(non_exclusive1, Err(Error::NonExclusiveCmd(_, _)));
+        let non_exclusive2 = Command::parse(&["--help", "--undo"]);
+        assert_matches!(non_exclusive2, Err(Error::NonExclusiveCmd(_, _)));
+        let non_exclusive3 = Command::parse(&["--rest", "--del"]);
+        assert_matches!(non_exclusive3, Err(Error::NonExclusiveCmd(_, _)));
+        let too_many = Command::parse(&["foo", "bar", "--undo"]);
+        assert_matches!(too_many, Err(Error::TooManyArgs(_, _)));
+        let empty_sel = Command::parse(&["-P"]);
+        assert_matches!(empty_sel, Err(Error::EmptySelectorList(_)));
+        //let three_part = Command::parse(&["-I", "1:3:"]);
+        //assert_matches!(three_part, Err(Error::ThreePartRange(_)));
+        //let invalid = Command::parse(&["--idx", "a:4"]);
+        //assert_matches!(invalid, Err(Error::InvalidIndex(_)));
+        let unknown = Command::parse(&["--foo"]);
+        assert_matches!(unknown, Err(Error::UnknownArg(_)));
+        let useless1 = Command::parse(&["-F", "--undo"]);
+        assert_matches!(useless1, Err(Error::UndoUselessSelector(_)));
+        let useless2 = Command::parse(&["foo.txt", "-I", "3"]);
+        assert_matches!(useless2, Err(Error::RemoveUselessSelector(_)));
+    }
+
+    #[test]
+    fn selector_idx() {
+        assert_eq!(
+            Index("1".to_string()).into().unwrap(),
+            select::Index::new(1, 1)
+        );
+        assert_eq!(
+            Index("1:4".to_string()).into().unwrap(),
+            select::Index::new(1, 4)
+        );
+        assert_eq!(
+            Index(":15".to_string()).into().unwrap(),
+            select::Index::new(1, 15)
+        );
+        assert_matches!(
+            Index("1:2:3".to_string()).into(),
+            Err(Error::ThreePartRange(_))
+        );
+        assert_matches!(Index("a:4".to_string()).into(), Err(Error::InvalidIndex(_)));
+    }
+
+    #[test]
+    fn selector_time() {
+        assert_eq!(
+            Time("3D4m:1Y3s30W".to_string()).into().unwrap(),
+            select::Time::new(
+                4 * 60 + 3 * 24 * 60 * 60,
+                3 + 30 * 7 * 24 * 60 * 60 + 1 * 365 * 24 * 60 * 60
+            )
+        );
+        assert_eq!(
+            Time("h:".to_string()).into().unwrap(),
+            select::Time::new(1 * 60 * 60, u64::MAX)
+        );
+        assert_eq!(
+            Time("13M".to_string()).into().unwrap(),
+            select::Time::new(
+                13 * 30 * 24 * 60 * 60,
+                13 * 30 * 24 * 60 * 60
+            )
+        );
     }
 }

@@ -48,6 +48,8 @@ restore_file() {
         actual+=".$id"
     fi
     critical "mv \"$REGISTRY/$aliased/file\" \"$actual\""
+    # Check that it actually worked before deleting the backup
+    critical "[ -e \"$actual\" ] || exit 20"
     critical "rm -rf \"$REGISTRY/$aliased\""
 }
 

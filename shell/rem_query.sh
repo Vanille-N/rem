@@ -41,6 +41,11 @@ list_fzf() {
 list_idx() {
     local start="$( echo "$1" | cut -d':' -f1 )"
     local end="$( echo "$1" | cut -d':' -f2 )"
+    if (( $start > $end )); then
+        efmt "${Bold}${Yellow}Start index greater than end index: $start > $end"
+        efmt "  No elements can be selected"
+        return
+    fi
     start="${start:-1}"
     end="${end:-0}"
     local index=0
@@ -98,6 +103,11 @@ list_time() {
     [ -z "$dt_new" ] && exit 110
     local old=$(( current - dt_old ))
     local new=$(( current - dt_new ))
+    if (( $old > $new )); then
+        efmt "${Bold}${Red}Start timestamp greater than end timestamp: $old > $new"
+        efmt "  No elements can be selected"
+        return
+    fi
     local index=0
     tac "$LOGFILE" |
     grep '|' |
@@ -105,16 +115,8 @@ list_time() {
         let '++index'
         local actual="$( file_actual "$line" )"
         local tdel="$( file_timestamp "$line" )"
-        if (( old <= new )); then
-            # Normal interval check
-            if (( old <= tdel )) && (( tdel <= new )); then
-                echo "$index $actual"
-            fi
-        else
-            # Inverted interval
-            if (( old < tdel )) || (( tdel < new )); then
-                echo "$index $actual"
-            fi
+        if (( old <= tdel )) && (( tdel <= new )); then
+            echo "$index $actual"
         fi
     done
 }

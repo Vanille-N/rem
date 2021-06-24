@@ -228,14 +228,12 @@
     Durations are converted to seconds (d being the default if `DURATION` is absent),
     then multiplied by the preceding digits (default 1),
     then added together to produce a delta of timestamps within which the file is selected.
-    If `YOUNG` > `OLD` the timeframe is inverted.
 
     !## Examples: 
         `':Y'`  &&& Deleted less that a year ago
         `'3M4d:'`  &&& More than 3 months 4 days
         `'M:3M'` &&& Between 1 and 3 months
         `'1000s:1YY'`  &&& More than 1000 seconds but less than 2 years
-        `'1Y:6M'`  &&& Everything _outside_ of the 6 months ~ 1 year range
 
     ??? Note: as long as it is transmitted as a single argument,
     ??? the timeframe descriptor may contain any amount of whitespace

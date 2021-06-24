@@ -15,7 +15,7 @@ pub struct Entries {
 }
 
 pub trait Select {
-    fn select(&self, entries: &Entries, selection: &mut BTreeSet<&Entry>);
+    fn select<'i>(&self, entries: &'i Entries, selection: &mut BTreeSet<&'i Entry>);
 }
 
 #[derive(Debug)]
@@ -36,44 +36,77 @@ pub struct Time {
     end: u64,
 }
 
+impl Time {
+    pub fn new(start: u64, end: u64) -> Self {
+        Self { start, end }
+    }
+}
+
 #[derive(Debug)]
-pub struct Pattern(String);
+pub struct Pattern(regex::Regex);
+
+impl Pattern {
+    pub fn new(re: regex::Regex) -> Self {
+        Self(re)
+    }
+}
 
 #[derive(Debug)]
 pub struct Fzf {}
 
-#[derive(Default)]
-pub struct Selector<'s>(Vec<Box<dyn Select + 's>>);
+#[derive(Debug)]
+pub struct Group(usize);
 
-impl<'s> Selector<'s> {
+impl Group {
+    pub fn new(id: usize) -> Self {
+        Self(id)
+    }
+}
+
+#[derive(Default)]
+pub struct Selector(Vec<Box<dyn Select + 'static>>);
+
+impl Selector {
     pub fn new() -> Self {
         Self::default()
     }
 
     pub fn push<S>(&mut self, sel: S)
     where
-        S: Select + 's,
+        S: Select + 'static,
     {
         self.0.push(Box::new(sel));
     }
 }
 impl Select for Pattern {
-    fn select(&self, entries: &Entries, selection: &mut BTreeSet<&Entry>) {
-        unimplemented!()
+    fn select<'i>(&self, entries: &'i Entries, selection: &mut BTreeSet<&'i Entry>) {
+        for e in &entries.contents {
+            if !selection.contains(e) && self.0.is_match(&e.name) {
+                selection.insert(e);
+            }
+        }
     }
 }
 impl Select for Time {
-    fn select(&self, entries: &Entries, selection: &mut BTreeSet<&Entry>) {
+    fn select<'i>(&self, entries: &'i Entries, selection: &mut BTreeSet<&'i Entry>) {
         unimplemented!()
     }
 }
 impl Select for Index {
-    fn select(&self, entries: &Entries, selection: &mut BTreeSet<&Entry>) {
-        unimplemented!()
+    fn select<'i>(&self, entries: &'i Entries, selection: &mut BTreeSet<&'i Entry>) {
+        let max = entries.contents.len();
+        for i in self.start..=self.end.min(max) {
+            selection.insert(&entries.contents[i]);
+        }
     }
 }
 impl Select for Fzf {
-    fn select(&self, entries: &Entries, selection: &mut BTreeSet<&Entry>) {
+    fn select<'i>(&self, entries: &'i Entries, selection: &mut BTreeSet<&'i Entry>) {
+        unimplemented!()
+    }
+}
+impl Select for Group{
+    fn select<'i>(&self, entries: &'i Entries, selection: &mut BTreeSet<&'i Entry>) {
         unimplemented!()
     }
 }

@@ -3,6 +3,7 @@
 # TODO:
 # restore to specific location
 # date-based selection
+# sudo mode
 
 ROOT="${REM_ROOT:-$HOME/.trash}"
 LOGFILE="$ROOT/history"
@@ -15,10 +16,10 @@ OVERWRITE=
 RANDOM=$( date +%N | sed 's,^0*,,' )
 CRITICAL=1
 
+
 REM_ENV=1
 
 HOME_SUB="s,$HOME,~,"
-
 
 esc_code() {
     echo "\x1b[${1}m"
@@ -68,6 +69,16 @@ UNIMPLEMENTED() {
     exit 200
 }
 
+if [[ "$HOME" == /root ]]; then
+    efmt "${Bold}${Red}You should not run Rem as root"
+    efmt "  Stick to rm and mv for such critical operations"
+    exit 25
+fi
+if ! [ -e "$LOCATION" ]; then
+    efmt "${Bold}${Red}Rem is not installed at '$LOCATION'"
+    efmt "  This could lead to problems for dynamically loading modules"
+    exit 26
+fi
 case "$REM_LS" in
     (exa|ls)
         if ! which "$REM_LS" &>/dev/null; then
@@ -101,9 +112,6 @@ case "$REM_FZF" in
             export REM_FZF=sk
         elif which fzf &>/dev/null; then
             export REM_FZF=fzf
-        else
-            efmt "${Bold}${Red}REM_FZF is unset and neither fzf nor sk is installed"
-            exit 30
         fi;;
     (*) efmt "${Bold}${Red}Not an fzf-type command: ${Green}'REM_FZF=$REM_FZF'"
         eftm "  Use either ${Purple}'fzf'${__} or ${Purple}'sk'${__}"
@@ -336,6 +344,11 @@ if [ -n "$SANDBOX" ]; then
     fmt ""
 fi
 
+if [ -n "$SELECT_FZF" ] && [ -z "$REM_FZF" ]; then
+    efmt "${Bold}${Red}REM_FZF is unset and neither fzf nor sk is installed"
+    exit 25
+fi
+
 if [[ "$CMD" == undo ]] || [[ "$CMD" == help ]]; then
     if [ -n "$HAS_SELECTION" ]; then
         efmt "${Bold}${Red}'$CMD' should have no selection"
@@ -428,7 +441,7 @@ execute() {
     esac
 }
 [ -n "$CRITICAL" ] && lock_critical_section
-select_files
+[ -n "$HAS_SELECTION" ] && select_files
 execute
 [ -n "$CRITICAL" ] && unlock_critical_section
 if [ -n "$SANDBOX" ]; then
