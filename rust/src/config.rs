@@ -22,6 +22,7 @@ impl Config {
                 Err(_) => PathBuf::from("/tmp/trash"),
             },
         };
+        let root = root.canonicalize().unwrap();
         let mut cfg = Config {
             history: root.clone(),
             lock: root.clone(),
@@ -31,6 +32,15 @@ impl Config {
         cfg.history.push("history");
         cfg.lock.push("lock");
         cfg.registry.push("registry");
+        std::fs::create_dir_all(&cfg.registry).unwrap();
         cfg
+    }
+
+    pub fn root(&self) -> &Path {
+        self.root.as_path()
+    }
+
+    pub fn registry(&self) -> &Path {
+        self.registry.as_path()
     }
 }

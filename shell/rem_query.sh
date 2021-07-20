@@ -97,9 +97,13 @@ interprete_timeframe() {
 
 list_time() {
     local current="$( date '+%s' )"
-    local dt_old="$( echo "$1" | cut -d':' -f2 | interprete_timeframe )"
+    local txt_old="$( echo "$1" | cut -d':' -f2 )"
+    local dt_old="$( echo "$txt_old" | interprete_timeframe )"
     [ -z "$dt_old" ] && exit 110
-    local dt_new="$( echo "$1" | cut -d':' -f1 | interprete_timeframe )"
+    local txt_new="$( echo "$1" | cut -d':' -f1 )"
+    local dt_new="$( echo "$txt_new" | interprete_timeframe )"
+    [ -z "$txt_new" ] && dt_new=0
+    [ -z "$txt_old" ] && dt_old="$current"
     [ -z "$dt_new" ] && exit 110
     local old=$(( current - dt_old ))
     local new=$(( current - dt_new ))

@@ -2,7 +2,6 @@ use std::collections::BTreeSet;
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub struct Entry {
-    index: usize,
     name: String,
     alias: String,
     timestamp: u64,
@@ -15,7 +14,7 @@ pub struct Entries {
 }
 
 pub trait Select {
-    fn select<'i>(&self, entries: &'i Entries, selection: &mut BTreeSet<&'i Entry>);
+    fn select<'i>(&self, entries: &'i Entries, selection: &mut BTreeSet<(usize, &'i Entry)>);
 }
 
 #[derive(Debug)]
@@ -79,34 +78,34 @@ impl Selector {
     }
 }
 impl Select for Pattern {
-    fn select<'i>(&self, entries: &'i Entries, selection: &mut BTreeSet<&'i Entry>) {
-        for e in &entries.contents {
-            if !selection.contains(e) && self.0.is_match(&e.name) {
-                selection.insert(e);
+    fn select<'i>(&self, entries: &'i Entries, selection: &mut BTreeSet<(usize, &'i Entry)>) {
+        for (i, e) in entries.contents.iter().enumerate() {
+            if !selection.contains(&(i, e)) && self.0.is_match(&e.name) {
+                selection.insert((i, e));
             }
         }
     }
 }
 impl Select for Time {
-    fn select<'i>(&self, entries: &'i Entries, selection: &mut BTreeSet<&'i Entry>) {
+    fn select<'i>(&self, entries: &'i Entries, selection: &mut BTreeSet<(usize, &'i Entry)>) {
         unimplemented!()
     }
 }
 impl Select for Index {
-    fn select<'i>(&self, entries: &'i Entries, selection: &mut BTreeSet<&'i Entry>) {
-        let max = entries.contents.len();
+    fn select<'i>(&self, entries: &'i Entries, selection: &mut BTreeSet<(usize, &'i Entry)>) {
+        let max = entries.contents.len() - 1;
         for i in self.start..=self.end.min(max) {
-            selection.insert(&entries.contents[i]);
+            selection.insert((i, &entries.contents[i]));
         }
     }
 }
 impl Select for Fzf {
-    fn select<'i>(&self, entries: &'i Entries, selection: &mut BTreeSet<&'i Entry>) {
+    fn select<'i>(&self, entries: &'i Entries, selection: &mut BTreeSet<(usize, &'i Entry)>) {
         unimplemented!()
     }
 }
 impl Select for Group{
-    fn select<'i>(&self, entries: &'i Entries, selection: &mut BTreeSet<&'i Entry>) {
+    fn select<'i>(&self, entries: &'i Entries, selection: &mut BTreeSet<(usize, &'i Entry)>) {
         unimplemented!()
     }
 }

@@ -174,15 +174,15 @@ refpoint() {
 
 make_info() {
     local name="$1"
-    local source="$2"
+    local source="${2//\'/"'\"'\"'"}"
     local infofile="$REGISTRY/$name/meta"
-    refpoint "Create $infofile"
-    critical "basename \"$source\" > \"$infofile\""
-    critical "date \"+%Y-%m-%d %H:%M:%S\" >> \"$infofile\""
-    critical "echo \"\" >> \"$infofile\""
-    critical "${REM_LS} -lh --color=always \"$source\" >> \"$infofile\""
-    critical "echo \"\" >> \"$infofile\""
-    critical "file \"$source\" | sed 's,:,\\n,' >> \"$infofile\""
+    refpoint "Create '$infofile'"
+    critical "basename '$source' > '$infofile'"
+    critical "date '+%Y-%m-%d %H:%M:%S' >> '$infofile'"
+    critical "echo '' >> '$infofile'"
+    critical "${REM_LS} -lh --color=always '$source' >> '$infofile'"
+    critical "echo '' >> '$infofile'"
+    critical "file '$source' | sed 's,:,\n,' >> '$infofile'"
 }
 
 del_register() {
@@ -195,10 +195,10 @@ del_register() {
     if [ -e "$source" ]; then
         local name=`newname`
         refpoint "Register $source as $name"
-        critical "mkdir \"$REGISTRY/$name\""
-        critical "echo \"$name|$source|$( date '+%s' )\" >> \"$LOGFILE\""
+        critical "mkdir '$REGISTRY/$name'"
+        critical "echo '$name|${source//\'/"'\"'\"'"}|$( date '+%s' )' >> '$LOGFILE'"
         make_info "$name" "$source"
-        critical "mv \"$source\" \"$REGISTRY/$name/file\""
+        critical "mv '${source//\'/"'\"'\"'"}' '$REGISTRY/$name/file'"
     else
         echo "$source not found             (skipping)"
     fi
@@ -249,6 +249,7 @@ FILES=()
 check_dup() {
     if [ -n "$CMD" ]; then
         efmt "${Bold}${Red}Duplicate command ${Yellow}'$1'${Red} provided: ${Ital}${Yellow}'$CMD'${Red} already registered"
+        echo "Can only execute one command at a time"
         exit 10
     fi
 }

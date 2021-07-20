@@ -1,11 +1,12 @@
 use crate::select::{self, Entries, Entry, Select};
 use std::collections::BTreeSet;
 use std::fmt;
+use std::os::unix::fs::PermissionsExt;
 
 
 macro_rules! esc {
     ( $( $c:tt );+ ) => {{
-        format!("\x1b[{}m", stringify!($( $c );+))
+        format!("\x1b[{}m", vec![$( $c.to_string() ),+].join(";"))
     }};
     ( ) => {
         esc![0]
@@ -23,10 +24,10 @@ const PURPLE: u8 = 95;
 
 #[derive(Debug)]
 pub struct Command {
-    action: Action,
-    sandbox: bool,
-    overwrite: bool,
-    critical: bool,
+    pub action: Action,
+    pub sandbox: bool,
+    pub overwrite: bool,
+    pub critical: bool,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -40,13 +41,23 @@ pub enum Action {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct File(String);
 
+impl File {
+    pub fn make(&self) -> std::path::PathBuf {
+        std::path::PathBuf::from(&self.0)
+    }
+
+    pub fn contents(self) -> String {
+        self.0
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Help(String);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Pattern(String);
 impl Pattern {
-    pub fn into(self) -> Result<select::Pattern, Error> {
+    pub fn make(self) -> Result<select::Pattern, Error> {
         match regex::Regex::new(&self.0) {
             Ok(re) => Ok(select::Pattern::new(re)),
             Err(regex::Error::Syntax(s)) => Err(Error::InvalidRegexSyntax(self.0, s)),
@@ -58,7 +69,7 @@ impl Pattern {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Index(String);
 impl Index {
-    pub fn into(self) -> Result<select::Index, Error> {
+    pub fn make(self) -> Result<select::Index, Error> {
         let mut parts = self.0.split(':');
         let start = parts.next();
         let end = parts.next();
@@ -115,13 +126,13 @@ impl Time {
                     curr = None;
                 }
                 c if c.is_whitespace() => {}
-                _ => return Err(Error::WrongDuration(c)),
+                _ => return Err(Error::WrongDuration(s.to_string(), c)),
             }
         }
         Ok(acc)
     }
 
-    pub fn into(self) -> Result<select::Time, Error> {
+    pub fn make(self) -> Result<select::Time, Error> {
         let mut parts = self.0.split(':');
         let start = parts.next();
         let end = parts.next();
@@ -170,6 +181,29 @@ pub struct Selector {
     fzf: bool,
 }
 
+impl Selector {
+    fn summary(&self) -> String {
+        let mut v = Vec::new();
+        if !self.active {
+            v.push("<Empty>");
+        } else {
+            if self.fzf {
+                v.push("--fzf");
+            }
+            if !self.pat.is_empty() {
+                v.push("--pat ...");
+            }
+            if !self.idx.is_empty() {
+                v.push("--idx ...");
+            }
+            if !self.time.is_empty() {
+                v.push("--time ...")
+            }
+        }
+        v.join(" ")
+    }
+}
+
 #[derive(Debug)]
 pub enum Error {
     NonExclusiveCmd(&'static str, &'static str),
@@ -178,11 +212,83 @@ pub enum Error {
     ThreePartRange(String),
     InvalidIndex(String),
     UnknownArg(String),
-    UndoUselessSelector(Selector),
-    RemoveUselessSelector(Selector),
-    WrongDuration(char),
+    UselessSelector(&'static str, Selector),
+    WrongDuration(String, char),
     InvalidRegexSyntax(String, String),
     RegexFailure(String),
+    FileDoesNotExist(String),
+    ReadOnlyFile(String),
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let (title, message, help) = match self {
+            Error::NonExclusiveCmd(prev, new) => (
+                format!("Non-exclusive command"),
+                format!("'{}' is given, but '{}' was already registered", new, prev),
+                format!("remove '--{}'", new),
+            ),
+            Error::TooManyArgs(cmd, args) => (
+                format!("Too many positional arguments"),
+                format!("command '{}' does not take positional arguments", cmd),
+                format!("remove '{}'", args.join(" ")),
+            ),
+            Error::EmptySelectorList(label) => (
+                format!("Empty selector list"),
+                format!("'--{}' selector does not have arguments", label),
+                format!("provide 'START:END' or 'PATTERN'"),
+            ),
+            Error::ThreePartRange(text) => (
+                format!("Range argument takes at most two elements"),
+                format!("'{}' is not a valid range", text),
+                format!("replace with '{}'", text.split(":").take(2).collect::<Vec<_>>().join(":")),
+            ),
+            Error::InvalidIndex(idx) => (
+                format!("Invalid index"),
+                format!("'{}' is not an index", idx),
+                format!("make it parsable as a decimal integer"),
+            ),
+            Error::UnknownArg(arg) => (
+                format!("Unknown argument"),
+                format!("'{}' is not a known argument", arg),
+                format!("place it after '--' if you want it to be treated as a filename"),
+            ),
+            Error::UselessSelector(cmd, sel) => (
+                format!("Useless selector"),
+                format!("'{}' takes no selector, yet '{}' was provided", cmd, sel.summary()),
+                format!("remove all selection arguments"),
+            ),
+            Error::WrongDuration(dur, c) => (
+                format!("Wrong duration"),
+                format!("'{}' cannot be parsed as a time delta", dur),
+                format!("remove invalid character '{}'", c),
+            ),
+            Error::InvalidRegexSyntax(re, err) => (
+                format!("Invalid regex syntax"),
+                format!("'{}' is not a regex", re),
+                format!("{}", err),
+            ),
+            Error::RegexFailure(re) => (
+                format!("Regex failure"),
+                format!("error occurred while parsing '{}'", re),
+                format!("it may be too big"),
+            ),
+            Error::FileDoesNotExist(name) => (
+                format!("File does not exist"),
+                format!("'{}' not found", name),
+                format!("maybe it exists but the permissions are invalid"),
+            ),
+            Error::ReadOnlyFile(name) => (
+                format!("File is read-only"),
+                format!("'{}' does not have the right permissions flags", name),
+                format!("use plain `rm` or change permissions"),
+            ),
+        };
+        writeln!(f, "{}{}{}", esc![BOLD;RED], title, esc![])?;
+        writeln!(f, "  {}", message)?;
+        writeln!(f, "  hint: {}", help)?;
+        Ok(())
+    }
 }
 
 #[derive(Debug)]
@@ -266,7 +372,7 @@ impl Command {
             // drain remaining args as positional (encountered '--')
             pos_args.push(arg.as_ref().to_string());
         }
-        let action = match (help, undo, editor.into_inner()) {
+        let action = match (help, undo, editor.make_inner()) {
             // Incompatibilities
             (true, true, _) => return Err(Error::NonExclusiveCmd("help", "undo")),
             (true, _, Some(ed)) => return Err(Error::NonExclusiveCmd("help", ed.as_str())),
@@ -278,7 +384,7 @@ impl Command {
                     return Err(Error::TooManyArgs("undo", pos_args));
                 }
                 if selector.active {
-                    return Err(Error::UndoUselessSelector(selector));
+                    return Err(Error::UselessSelector("undo", selector));
                 }
                 Action::Undo
             }
@@ -293,7 +399,7 @@ impl Command {
                     Action::Edit(None, selector)
                 } else {
                     if selector.active {
-                        return Err(Error::RemoveUselessSelector(selector));
+                        return Err(Error::UselessSelector("remove", selector));
                     }
                     Action::Remove(pos_args.into_iter().map(File).collect())
                 }
@@ -337,16 +443,16 @@ impl Selector {
         self.active = true;
     }
 
-    pub fn into(self) -> Result<select::Selector, Error> {
+    pub fn make(self) -> Result<select::Selector, Error> {
         let mut sel = select::Selector::new();
         for p in self.pat {
-            sel.push(p.into()?);
+            sel.push(p.make()?);
         }
         for t in self.time {
-            sel.push(t.into()?);
+            sel.push(t.make()?);
         }
         for i in self.idx {
-            sel.push(i.into()?);
+            sel.push(i.make()?);
         }
         if self.fzf {
             sel.push(select::Fzf {});
@@ -377,7 +483,7 @@ impl OnceEd {
         }
     }
 
-    fn into_inner(self) -> Option<Editor> {
+    fn make_inner(self) -> Option<Editor> {
         self.data
     }
 }
@@ -490,39 +596,39 @@ mod test {
     #[test]
     fn selector_idx() {
         assert_eq!(
-            Index("1".to_string()).into().unwrap(),
+            Index("1".to_string()).make().unwrap(),
             select::Index::new(1, 1)
         );
         assert_eq!(
-            Index("1:4".to_string()).into().unwrap(),
+            Index("1:4".to_string()).make().unwrap(),
             select::Index::new(1, 4)
         );
         assert_eq!(
-            Index(":15".to_string()).into().unwrap(),
+            Index(":15".to_string()).make().unwrap(),
             select::Index::new(1, 15)
         );
         assert_matches!(
-            Index("1:2:3".to_string()).into(),
+            Index("1:2:3".to_string()).make(),
             Err(Error::ThreePartRange(_))
         );
-        assert_matches!(Index("a:4".to_string()).into(), Err(Error::InvalidIndex(_)));
+        assert_matches!(Index("a:4".to_string()).make(), Err(Error::InvalidIndex(_)));
     }
 
     #[test]
     fn selector_time() {
         assert_eq!(
-            Time("3D4m:1Y3s30W".to_string()).into().unwrap(),
+            Time("3D4m:1Y3s30W".to_string()).make().unwrap(),
             select::Time::new(
                 4 * 60 + 3 * 24 * 60 * 60,
                 3 + 30 * 7 * 24 * 60 * 60 + 1 * 365 * 24 * 60 * 60
             )
         );
         assert_eq!(
-            Time("h:".to_string()).into().unwrap(),
+            Time("h:".to_string()).make().unwrap(),
             select::Time::new(1 * 60 * 60, u64::MAX)
         );
         assert_eq!(
-            Time("13M".to_string()).into().unwrap(),
+            Time("13M".to_string()).make().unwrap(),
             select::Time::new(
                 13 * 30 * 24 * 60 * 60,
                 13 * 30 * 24 * 60 * 60
