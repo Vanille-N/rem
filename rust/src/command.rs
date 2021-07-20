@@ -218,6 +218,7 @@ pub enum Error {
     RegexFailure(String),
     FileDoesNotExist(String),
     ReadOnlyFile(String),
+    SandBoxed,
 }
 
 impl fmt::Display for Error {
@@ -283,6 +284,7 @@ impl fmt::Display for Error {
                 format!("'{}' does not have the right permissions flags", name),
                 format!("use plain `rm` or change permissions"),
             ),
+            Error::SandBoxed => return Ok(()),
         };
         writeln!(f, "{}{}{}", esc![BOLD;RED], title, esc![])?;
         writeln!(f, "  {}", message)?;
