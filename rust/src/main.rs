@@ -1,7 +1,7 @@
 mod command;
 mod config;
-mod select;
 mod exec;
+mod select;
 
 fn main() {
     let cmd = match command::Command::argparse() {

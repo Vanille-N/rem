@@ -3,7 +3,6 @@ use std::collections::BTreeSet;
 use std::fmt;
 use std::os::unix::fs::PermissionsExt;
 
-
 macro_rules! esc {
     ( $( $c:tt );+ ) => {{
         format!("\x1b[{}m", vec![$( $c.to_string() ),+].join(";"))
@@ -92,7 +91,10 @@ impl Index {
             },
         };
         if start > end {
-            eprintln!("{}", Warning::EmptyRange(self.0.clone(), start as u64, end as u64));
+            eprintln!(
+                "{}",
+                Warning::EmptyRange(self.0.clone(), start as u64, end as u64)
+            );
         }
         Ok(select::Index::new(start, end))
     }
@@ -218,6 +220,10 @@ pub enum Error {
     RegexFailure(String),
     FileDoesNotExist(String),
     ReadOnlyFile(String),
+    FailedToWrite(String),
+    ExecError(&'static str),
+    CouldNotCreateDir(String),
+    CouldNotMove(String, String),
     SandBoxed,
 }
 
@@ -242,7 +248,10 @@ impl fmt::Display for Error {
             Error::ThreePartRange(text) => (
                 format!("Range argument takes at most two elements"),
                 format!("'{}' is not a valid range", text),
-                format!("replace with '{}'", text.split(":").take(2).collect::<Vec<_>>().join(":")),
+                format!(
+                    "replace with '{}'",
+                    text.split(":").take(2).collect::<Vec<_>>().join(":")
+                ),
             ),
             Error::InvalidIndex(idx) => (
                 format!("Invalid index"),
@@ -256,7 +265,11 @@ impl fmt::Display for Error {
             ),
             Error::UselessSelector(cmd, sel) => (
                 format!("Useless selector"),
-                format!("'{}' takes no selector, yet '{}' was provided", cmd, sel.summary()),
+                format!(
+                    "'{}' takes no selector, yet '{}' was provided",
+                    cmd,
+                    sel.summary()
+                ),
                 format!("remove all selection arguments"),
             ),
             Error::WrongDuration(dur, c) => (
@@ -283,6 +296,26 @@ impl fmt::Display for Error {
                 format!("File is read-only"),
                 format!("'{}' does not have the right permissions flags", name),
                 format!("use plain `rm` or change permissions"),
+            ),
+            Error::FailedToWrite(path) => (
+                format!("Could not write"),
+                format!("'{}' does not have the right permissions flags", path),
+                format!("change permissions to writeable"),
+            ),
+            Error::ExecError(cmd) => (
+                format!("Failed to execute"),
+                format!("'{}' could not run", cmd),
+                format!("ensure it is in your $PATH"),
+            ),
+            Error::CouldNotCreateDir(dir) => (
+                format!("Failed to create directory"),
+                format!("'{}' is not accessible", dir),
+                format!("ensure parent has write permissions"),
+            ),
+            Error::CouldNotMove(src, dest) => (
+                format!("Failed to move"),
+                format!("unable to move '{}' to '{}'", src, dest),
+                format!("check write permissions"),
             ),
             Error::SandBoxed => return Ok(()),
         };
@@ -631,10 +664,7 @@ mod test {
         );
         assert_eq!(
             Time("13M".to_string()).make().unwrap(),
-            select::Time::new(
-                13 * 30 * 24 * 60 * 60,
-                13 * 30 * 24 * 60 * 60
-            )
+            select::Time::new(13 * 30 * 24 * 60 * 60, 13 * 30 * 24 * 60 * 60)
         );
     }
 }

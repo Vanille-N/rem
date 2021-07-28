@@ -2,9 +2,9 @@ use std::collections::BTreeSet;
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub struct Entry {
-    name: String,
-    alias: String,
-    timestamp: u64,
+    pub name: String,
+    pub alias: String,
+    pub timestamp: u64,
 }
 
 #[derive(Debug, Clone)]
@@ -104,7 +104,7 @@ impl Select for Fzf {
         unimplemented!()
     }
 }
-impl Select for Group{
+impl Select for Group {
     fn select<'i>(&self, entries: &'i Entries, selection: &mut BTreeSet<(usize, &'i Entry)>) {
         unimplemented!()
     }

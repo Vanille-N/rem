@@ -7,6 +7,8 @@ pub struct Config {
     history: PathBuf,
     lock: PathBuf,
     registry: PathBuf,
+    ls_cmd: &'static str,
+    fzf_cmd: &'static str,
 }
 
 impl Config {
@@ -23,11 +25,15 @@ impl Config {
             },
         };
         let root = root.canonicalize().unwrap();
+        let ls_cmd = get_ls_cmd();
+        let fzf_cmd = get_fzf_cmd();
         let mut cfg = Config {
             history: root.clone(),
             lock: root.clone(),
             registry: root.clone(),
             root,
+            ls_cmd,
+            fzf_cmd,
         };
         cfg.history.push("history");
         cfg.lock.push("lock");
@@ -43,4 +49,20 @@ impl Config {
     pub fn registry(&self) -> &Path {
         self.registry.as_path()
     }
+
+    pub fn fzf_cmd(&self) -> &'static str {
+        self.fzf_cmd
+    }
+
+    pub fn ls_cmd(&self) -> &'static str {
+        self.ls_cmd
+    }
+}
+
+fn get_ls_cmd() -> &'static str {
+    unimplemented!()
+}
+
+fn get_fzf_cmd() -> &'static str {
+    unimplemented!()
 }
