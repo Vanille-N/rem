@@ -17,6 +17,19 @@ pub fn exec(cmd: Command, cfg: Config) {
                     Err(err) => eprintln!("{}", err),
                 }
             }
+            use std::io::Write;
+            let mut history = std::fs::OpenOptions::new()
+                .write(true)
+                .append(true)
+                .open(cfg.registry())
+                .unwrap();
+            for entry in register {
+                writeln!(history, "{}|{}|{}", entry.alias, entry.name, entry.timestamp)
+                    .unwrap_or_else(|_| {
+                        let err = Error::FailedToWrite(cfg.registry().to_str().unwrap().to_string());
+                        eprintln!("{}", err)
+                    });
+            }
         }
         Action::Edit(ed, sel) => unimplemented!(),
         Action::Undo => unimplemented!(),
@@ -31,7 +44,11 @@ fn remove(cfg: &Config, sandbox: bool, file: command::File) -> Result<Entry, Err
         Ok(name) => path,
         Err(_) => return Err(Error::FileDoesNotExist(file.contents())),
     };
-    let alias = Path::new("WXYZ");
+    let alias = {
+        let mut p = PathBuf::new();
+        p.push(&generate_random_dirname());
+        p
+    };
     let timestamp = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
         .unwrap()
@@ -95,4 +112,8 @@ fn record_data(cfg: &Config, file: &Path, meta: &Path) -> Result<(), Error> {
         .and_then(|_| writeln!(f, "\n{}", std::str::from_utf8(&ls_out.stdout).unwrap()))
         .and_then(|_| writeln!(f, "\n{}", std::str::from_utf8(&file_out.stdout).unwrap()))
         .or_else(|_| Err(Error::FailedToWrite(file.to_str().unwrap().to_string())))
+}
+
+fn generate_random_dirname() -> String {
+    unimplemented!()
 }
