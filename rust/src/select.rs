@@ -1,3 +1,4 @@
+use crate::command::Error;
 use std::collections::BTreeSet;
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
@@ -11,6 +12,20 @@ pub struct Entry {
 pub struct Entries {
     contents: Vec<Entry>,
     blocks: Vec<usize>,
+}
+
+impl Entries {
+    pub fn from_file(file: &std::path::Path) -> Result<Self, Error> {
+        let contents = match std::fs::read_to_string(file) {
+            Ok(contents) => contents,
+            Err(_) => {
+                return Err(Error::HistoryNotReadable(
+                    file.to_str().unwrap().to_string(),
+                ))
+            }
+        };
+        unimplemented!()
+    }
 }
 
 pub trait Select {
@@ -29,7 +44,10 @@ impl Index {
     }
 
     pub fn as_block(self) -> Block {
-        Block { start: self.start, end: self.end }
+        Block {
+            start: self.start,
+            end: self.end,
+        }
     }
 }
 

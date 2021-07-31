@@ -238,6 +238,7 @@ pub enum Error {
     InvalidVarLs(String),
     InvalidVarFzf(String),
     NoInstalledFzf,
+    HistoryNotReadable(String),
     SandBoxed,
 }
 
@@ -350,6 +351,11 @@ impl fmt::Display for Error {
                 format!("No fzf equivalent detected"),
                 format!("neither 'fzf' nor 'sk' is installed"),
                 format!("make sure one of them is in your $PATH"),
+            ),
+            Error::HistoryNotReadable(histfile) => (
+                format!("Can't read history file"),
+                format!("{} is not readable", histfile),
+                format!("check permissions"),
             ),
             Error::SandBoxed => return Ok(()),
         };

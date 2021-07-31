@@ -137,7 +137,7 @@ fn record_data(cfg: &Config, file: &Path, meta: &Path) -> Result<(), Error> {
 const ALIAS_LENGTH: usize = 25;
 
 fn generate_random_dirname() -> String {
-    use rand::{Rng, distributions::Alphanumeric};
+    use rand::{distributions::Alphanumeric, Rng};
     rand::thread_rng()
         .sample_iter(&Alphanumeric)
         .take(ALIAS_LENGTH)

@@ -82,9 +82,7 @@ fn default_ls_cmd() -> &'static str {
 fn get_ls_cmd() -> &'static str {
     match std::env::var("REM_LS").ok().as_deref() {
         Some("ls") => "ls",
-        Some("exa") if cmd_exists("exa") => {
-            "exa"
-        }
+        Some("exa") if cmd_exists("exa") => "exa",
         Some(other) => {
             let err = crate::command::Error::InvalidVarLs(other.to_string());
             eprintln!("{}", err);
