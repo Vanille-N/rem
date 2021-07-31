@@ -27,6 +27,10 @@ impl Index {
     pub fn new(start: usize, end: usize) -> Self {
         Self { start, end }
     }
+
+    pub fn as_block(self) -> Block {
+        Block { start: self.start, end: self.end }
+    }
 }
 
 #[derive(Debug)]
@@ -54,11 +58,14 @@ impl Pattern {
 pub struct Fzf {}
 
 #[derive(Debug)]
-pub struct Group(usize);
+pub struct Block {
+    start: usize,
+    end: usize,
+}
 
-impl Group {
-    pub fn new(id: usize) -> Self {
-        Self(id)
+impl Block {
+    pub fn new(start: usize, end: usize) -> Self {
+        Self { start, end }
     }
 }
 
@@ -104,7 +111,7 @@ impl Select for Fzf {
         unimplemented!()
     }
 }
-impl Select for Group {
+impl Select for Block {
     fn select<'i>(&self, entries: &'i Entries, selection: &mut BTreeSet<(usize, &'i Entry)>) {
         unimplemented!()
     }

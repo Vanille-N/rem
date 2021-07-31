@@ -33,7 +33,6 @@ pub struct Command {
 pub enum Action {
     Remove(Vec<File>),
     Edit(Option<Editor>, Selector),
-    Undo,
     Help(Vec<Help>),
 }
 
@@ -97,6 +96,14 @@ impl Index {
             );
         }
         Ok(select::Index::new(start, end))
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Block(String);
+impl Block {
+    pub fn make(self) -> Result<select::Block, Error> {
+        Index(self.0).make().map(select::Index::as_block)
     }
 }
 
@@ -179,7 +186,7 @@ pub struct Selector {
     active: bool,
     pat: Vec<Pattern>,
     idx: Vec<Index>,
-    blk: Vec<Index>,
+    blk: Vec<Block>,
     time: Vec<Time>,
     fzf: bool,
 }
@@ -449,7 +456,8 @@ impl Command {
                 if selector.active {
                     return Err(Error::UselessSelector("undo", selector));
                 }
-                Action::Undo
+                selector.blk.push(Block(String::from("1")));
+                Action::Edit(Some(Editor::Restore), selector)
             }
             (_, _, Some(ed)) => {
                 if !pos_args.is_empty() {
@@ -502,7 +510,7 @@ impl Selector {
     }
 
     pub fn add_blk(&mut self, blk: String) {
-        self.blk.push(Index(blk));
+        self.blk.push(Block(blk));
         self.active = true;
     }
 

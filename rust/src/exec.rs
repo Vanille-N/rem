@@ -43,7 +43,6 @@ pub fn exec(cmd: Command, cfg: Config) {
             }
         }
         Action::Edit(ed, sel) => unimplemented!(),
-        Action::Undo => unimplemented!(),
         Action::Help(menus) => unimplemented!(),
     }
 }
