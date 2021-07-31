@@ -220,10 +220,13 @@ pub enum Error {
     RegexFailure(String),
     FileDoesNotExist(String),
     ReadOnlyFile(String),
-    FailedToWrite(String),
+    FailedToWrite(String, Option<String>),
     ExecError(&'static str),
     CouldNotCreateDir(String),
     CouldNotMove(String, String),
+    InvalidVarLs(String),
+    InvalidVarFzf(String),
+    NoInstalledFzf,
     SandBoxed,
 }
 
@@ -297,10 +300,15 @@ impl fmt::Display for Error {
                 format!("'{}' does not have the right permissions flags", name),
                 format!("use plain `rm` or change permissions"),
             ),
-            Error::FailedToWrite(path) => (
+            Error::FailedToWrite(path, None) => (
                 format!("Could not write"),
                 format!("'{}' does not have the right permissions flags", path),
                 format!("change permissions to writeable"),
+            ),
+            Error::FailedToWrite(path, Some(s)) => (
+                format!("Could not write"),
+                format!("'{}' should have been written to '{}'", s, path),
+                format!("write manually and change permissions for next execution"),
             ),
             Error::ExecError(cmd) => (
                 format!("Failed to execute"),
@@ -316,6 +324,21 @@ impl fmt::Display for Error {
                 format!("Failed to move"),
                 format!("unable to move '{}' to '{}'", src, dest),
                 format!("check write permissions"),
+            ),
+            Error::InvalidVarLs(cmd) => (
+                format!("Invalid $REM_LS contents"),
+                format!("'{}' is invalid", cmd),
+                format!("it must be one of 'exa' or 'ls' _and_ be in your $PATH"),
+            ),
+            Error::InvalidVarFzf(cmd) => (
+                format!("Invalid $REM_FZF contents"),
+                format!("'{}' is invalid", cmd),
+                format!("it must be one of 'sk' or 'fzf' _and_ be in your $PATH"),
+            ),
+            Error::NoInstalledFzf => (
+                format!("No fzf equivalent detected"),
+                format!("neither 'fzf' nor 'sk' is installed"),
+                format!("make sure one of them is in your $PATH"),
             ),
             Error::SandBoxed => return Ok(()),
         };

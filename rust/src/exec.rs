@@ -21,14 +21,25 @@ pub fn exec(cmd: Command, cfg: Config) {
             let mut history = std::fs::OpenOptions::new()
                 .write(true)
                 .append(true)
-                .open(cfg.registry())
+                .create(true)
+                .open(cfg.history())
                 .unwrap();
+            writeln!(history, "").unwrap_or_else(|_| {
+                let err = Error::FailedToWrite(
+                    cfg.registry().to_str().unwrap().to_string(),
+                    Some("".to_string()),
+                );
+                eprintln!("{}", err)
+            });
             for entry in register {
-                writeln!(history, "{}|{}|{}", entry.alias, entry.name, entry.timestamp)
-                    .unwrap_or_else(|_| {
-                        let err = Error::FailedToWrite(cfg.registry().to_str().unwrap().to_string());
-                        eprintln!("{}", err)
-                    });
+                let contents = format!("{}|{}|{}", entry.alias, entry.name, entry.timestamp);
+                writeln!(history, "{}", contents).unwrap_or_else(|_| {
+                    let err = Error::FailedToWrite(
+                        cfg.registry().to_str().unwrap().to_string(),
+                        Some(contents),
+                    );
+                    eprintln!("{}", err)
+                });
             }
         }
         Action::Edit(ed, sel) => unimplemented!(),
@@ -91,13 +102,17 @@ fn remove(cfg: &Config, sandbox: bool, file: command::File) -> Result<Entry, Err
 }
 
 fn record_data(cfg: &Config, file: &Path, meta: &Path) -> Result<(), Error> {
-    let mut f = std::fs::File::open(meta).unwrap();
+    let mut f = std::fs::OpenOptions::new()
+        .write(true)
+        .create(true)
+        .open(meta)
+        .unwrap();
     let date_out = std::process::Command::new("date")
         .arg("+%Y-%m-%d %H:%M:%S")
         .output()
         .or_else(|_| Err(Error::ExecError("date")))?;
     let ls_out = std::process::Command::new(cfg.ls_cmd())
-        .arg("-lh")
+        .arg("-Flah")
         .arg("--color=always")
         .arg(file.to_str().unwrap())
         .output()
@@ -111,9 +126,21 @@ fn record_data(cfg: &Config, file: &Path, meta: &Path) -> Result<(), Error> {
         .and_then(|_| writeln!(f, "{}", std::str::from_utf8(&date_out.stdout).unwrap()))
         .and_then(|_| writeln!(f, "\n{}", std::str::from_utf8(&ls_out.stdout).unwrap()))
         .and_then(|_| writeln!(f, "\n{}", std::str::from_utf8(&file_out.stdout).unwrap()))
-        .or_else(|_| Err(Error::FailedToWrite(file.to_str().unwrap().to_string())))
+        .or_else(|_| {
+            Err(Error::FailedToWrite(
+                file.to_str().unwrap().to_string(),
+                None,
+            ))
+        })
 }
 
+const ALIAS_LENGTH: usize = 25;
+
 fn generate_random_dirname() -> String {
-    unimplemented!()
+    use rand::{Rng, distributions::Alphanumeric};
+    rand::thread_rng()
+        .sample_iter(&Alphanumeric)
+        .take(ALIAS_LENGTH)
+        .map(char::from)
+        .collect()
 }

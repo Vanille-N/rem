@@ -180,7 +180,7 @@ make_info() {
     critical "basename '$source' > '$infofile'"
     critical "date '+%Y-%m-%d %H:%M:%S' >> '$infofile'"
     critical "echo '' >> '$infofile'"
-    critical "${REM_LS} -lh --color=always '$source' >> '$infofile'"
+    critical "${REM_LS} -Flah --color=always '$source' >> '$infofile'"
     critical "echo '' >> '$infofile'"
     critical "file '$source' | sed 's,:,\n,' >> '$infofile'"
 }

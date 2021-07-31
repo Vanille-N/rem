@@ -13,6 +13,8 @@ pub struct Config {
 
 impl Config {
     pub fn getenv() -> Self {
+        let root = PathBuf::from("/tmp/.trash");
+        /*
         let root = match std::env::var("REM_ROOT") {
             Ok(s) => PathBuf::from(s),
             Err(_) => match std::env::var("HOME") {
@@ -24,6 +26,8 @@ impl Config {
                 Err(_) => PathBuf::from("/tmp/trash"),
             },
         };
+        */
+        std::fs::create_dir_all(&root).unwrap();
         let root = root.canonicalize().unwrap();
         let ls_cmd = get_ls_cmd();
         let fzf_cmd = get_fzf_cmd();
@@ -46,6 +50,10 @@ impl Config {
         self.root.as_path()
     }
 
+    pub fn history(&self) -> &Path {
+        self.history.as_path()
+    }
+
     pub fn registry(&self) -> &Path {
         self.registry.as_path()
     }
@@ -59,10 +67,57 @@ impl Config {
     }
 }
 
+fn cmd_exists(cmd: &str) -> bool {
+    std::process::Command::new(cmd)
+        .arg("--fail")
+        .output()
+        .is_ok()
+}
+
+fn default_ls_cmd() -> &'static str {
+    if cmd_exists("exa") {
+        "exa"
+    } else {
+        "ls"
+    }
+}
+
 fn get_ls_cmd() -> &'static str {
-    unimplemented!()
+    match std::env::var("REM_LS").ok().as_deref() {
+        Some("ls") => "ls",
+        Some("exa") if cmd_exists("exa") => {
+            "exa"
+        }
+        Some(other) => {
+            let err = crate::command::Error::InvalidVarLs(other.to_string());
+            eprintln!("{}", err);
+            default_ls_cmd()
+        }
+        None => default_ls_cmd(),
+    }
+}
+
+fn default_fzf_cmd() -> &'static str {
+    if cmd_exists("sk") {
+        "sk"
+    } else if cmd_exists("fzf") {
+        "fzf"
+    } else {
+        let err = crate::command::Error::NoInstalledFzf;
+        println!("{}", err);
+        "sk"
+    }
 }
 
 fn get_fzf_cmd() -> &'static str {
-    unimplemented!()
+    match std::env::var("REM_FZF").ok().as_deref() {
+        Some("fzf") if cmd_exists("fzf") => "fzf",
+        Some("sk") if cmd_exists("sk") => "sk",
+        Some(other) => {
+            let err = crate::command::Error::InvalidVarFzf(other.to_string());
+            eprintln!("{}", err);
+            default_fzf_cmd()
+        }
+        None => default_fzf_cmd(),
+    }
 }
