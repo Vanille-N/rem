@@ -55,9 +55,10 @@ fn remove(cfg: &Config, sandbox: bool, file: command::File) -> Result<Entry, Err
         Ok(name) => path,
         Err(_) => return Err(Error::FileDoesNotExist(file.contents())),
     };
+    let randname = generate_random_dirname();
     let alias = {
         let mut p = PathBuf::new();
-        p.push(&generate_random_dirname());
+        p.push(&randname);
         p
     };
     let timestamp = SystemTime::now()
@@ -96,7 +97,7 @@ fn remove(cfg: &Config, sandbox: bool, file: command::File) -> Result<Entry, Err
     }
     Ok(Entry {
         name: path.to_str().unwrap().to_string(),
-        alias: destfile.to_str().unwrap().to_string(),
+        alias: randname,
         timestamp,
     })
 }

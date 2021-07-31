@@ -13,20 +13,17 @@ pub struct Config {
 
 impl Config {
     pub fn getenv() -> Self {
-        let root = PathBuf::from("/tmp/.trash");
-        /*
         let root = match std::env::var("REM_ROOT") {
             Ok(s) => PathBuf::from(s),
             Err(_) => match std::env::var("HOME") {
                 Ok(s) => {
                     let mut path = PathBuf::from(s);
-                    path.push(".trash");
+                    path.push("._trash");
                     path
                 }
                 Err(_) => PathBuf::from("/tmp/trash"),
             },
         };
-        */
         std::fs::create_dir_all(&root).unwrap();
         let root = root.canonicalize().unwrap();
         let ls_cmd = get_ls_cmd();
