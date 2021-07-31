@@ -27,8 +27,9 @@
         `-P`  `--pat` `PATTERN ...`  &&& show files matching one of the patterns
         `-F`  `--fzf`  &&& use fzf for finding
         `-I`  `--idx` `(INDEX|[START]:[END]) ...`  &&& index range
-        `-T`  `--time` `(TIME|[START]:[END])`  &&& timeframe (deletion timestamp)
-            ??? --help select, pat, fzf, idx, time
+        `-B`  `--blk` `(BLOCK|[START]:[END]) ...`  &&& block range
+        `-T`  `--time` `(TIME|[START]:[END]) ...`  &&& timeframe (deletion timestamp)
+            ??? --help select, pat, fzf, idx, blk, time
 
     !## Other:
         `-S`  `--sandbox`  &&& print commands instead of executing them
@@ -50,6 +51,7 @@
 
     !-- Undo last removal
         `$:rem` `--undo`
+        `$:rem` `--rest` `--blk` `1`
 
     !-- Restore indexes 1 to 3, 10 to 12, and all interactively selected files
         `$:rem` `--rest` `--idx` `1:3 10:12` `--fzf`
@@ -100,6 +102,7 @@
         $ `$:rem` `--undo`
     is always a no_op. The `--undo` command precisely restores the last batch of files
     that were removed.
+    Hence `--undo` is a shortcut for `--rest` `--blk` `1`
 
     If the last batch of files was partially modified using
     any of `--del` or `--rest`, then `--undo` restores the rest of them.
@@ -207,6 +210,18 @@
     1 is the most recently deleted file, bigger numbers mean older files
     `--idx` is mostly meant to be used by scripts, e.g. the `--fzf` preview command
     which can extract the index from the printed information then use it
+<end>
+<blk>
+    !# Rem :: Select :: Blk
+    !### Reverse block deletion order
+
+        `--blk` `RANGE ...`
+    where `RANGE` is of the form `[BEGIN]:[END]`
+    Calculates the union of all provided block ranges, i.e. files deleted in the
+    same command invocation
+
+    1 is the most recently deleted group of files, bigger numbers mean older files
+    ??? See --idx for syntax examples
 <end>
 <time>
     !# Rem :: Select :: Time

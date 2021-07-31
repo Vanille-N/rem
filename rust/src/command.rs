@@ -179,6 +179,7 @@ pub struct Selector {
     active: bool,
     pat: Vec<Pattern>,
     idx: Vec<Index>,
+    blk: Vec<Index>,
     time: Vec<Time>,
     fzf: bool,
 }
@@ -200,6 +201,9 @@ impl Selector {
             }
             if !self.time.is_empty() {
                 v.push("--time ...")
+            }
+            if !self.blk.is_empty() {
+                v.push("--blk ...")
             }
         }
         v.join(" ")
@@ -413,6 +417,7 @@ impl Command {
                     "--fzf" | "-F" => selector.add_fzf(),
                     "--pat" | "-P" => do_take_while!(args, "pat", selector.add_pat),
                     "--idx" | "-I" => do_take_while!(args, "idx", selector.add_idx),
+                    "--blk" | "-B" => do_take_while!(args, "blk", selector.add_blk),
                     "--time" | "-T" => do_take_while!(args, "time", selector.add_time),
                     "--sandbox" | "-S" => sandbox = true,
                     "--overwrite" | "-O" => overwrite = true,
@@ -493,6 +498,11 @@ impl Selector {
 
     pub fn add_idx(&mut self, idx: String) {
         self.idx.push(Index(idx));
+        self.active = true;
+    }
+
+    pub fn add_blk(&mut self, blk: String) {
+        self.blk.push(Index(blk));
         self.active = true;
     }
 

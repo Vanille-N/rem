@@ -242,6 +242,7 @@ CMD=
 SELECT_PAT=()
 SELECT_IDX=()
 SELECT_TIME=()
+SELECT_BLK=()
 SELECT_FZF=
 HAS_SELECTION=
 FILES=()
@@ -310,6 +311,14 @@ parse_args() {
                 done
                 HAS_SELECTION=1
                 ;;
+            (-B|--blk) check_file block
+                [ -v 1 ] || empty_selectors block
+                SELECT_BLK+=( "$1" ); shift
+                until [[ "$1" =~ ^(-.*|)$ ]]; do
+                    SELECT_BLK+=( "$1" ); shift
+                done
+                HAS_SELECTION=1
+                ;;
             (-S|--sandbox) SANDBOX=1; CRITICAL=;;
             (-O|--overwrite) OVERWRITE=1;;
             (--)
@@ -337,6 +346,7 @@ if [ -n "$SANDBOX" ]; then
     fmt "pat            ${Yellow}${SELECT_PAT[@]:--}"
     fmt "idx            ${Yellow}${SELECT_IDX[@]:--}"
     fmt "time           ${Yellow}${SELECT_TIME[@]:--}"
+    fmt "block          ${Yellow}${SELECT_BLK[@]:--}"
     fmt "files          ${Yellow}${FILES[@]:--}"
     fmt ""
     fmt "${Purple}### This is the sandbox mode"
@@ -371,6 +381,9 @@ select_files() {
         done
         for t in "${SELECT_TIME[@]}"; do
             list_time "$t" | sed "$HOME_SUB"
+        done
+        for b in "${SELECT_BLK[@]}"; do
+            list_block "$b" | sed "$HOME_SUB"
         done
         if [ -n "$SELECT_FZF" ]; then
             list_fzf

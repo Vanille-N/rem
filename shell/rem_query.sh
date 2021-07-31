@@ -41,13 +41,13 @@ list_fzf() {
 list_idx() {
     local start="$( echo "$1" | cut -d':' -f1 )"
     local end="$( echo "$1" | cut -d':' -f2 )"
+    start="${start:-0}"
+    end="${end:-1000000}"
     if (( $start > $end )); then
         efmt "${Bold}${Yellow}Start index greater than end index: $start > $end"
         efmt "  No elements can be selected"
         return
     fi
-    start="${start:-1}"
-    end="${end:-0}"
     local index=0
     tac "$LOGFILE" |
     grep '|' |
@@ -57,6 +57,37 @@ list_idx() {
         local actual="$( file_actual "$line" )"
         echo "$index $actual"
         if (( $index == $end )); then break; fi
+    done
+}
+
+list_block() {
+    local start="$( echo "$1" | cut -d':' -f1 )"
+    local end="$( echo "$1" | cut -d':' -f2 )"
+    start="${start:-0}"
+    end="${end:-1000000}"
+    if (( $start > $end )); then
+        efmt "${Bold}${Yellow}Start index greater than end index: $start > $end"
+        efmt "  No elements can be selected"
+        return
+    fi
+    local block=1
+    local index=0
+    local selected=
+    tac "$LOGFILE" |
+    while read -t 0.05 line; do
+        if [ -z "$line" ]; then
+            let '++block'
+            if (( $block == $end+1 )); then break; fi
+            while [ -z "$line" ]; do
+                if ! read -t 0.05 line; then
+                    return
+                fi
+            done
+        fi
+        let '++index'
+        if (( $block < $start )); then continue; fi
+        local actual="$( file_actual "$line" )"
+        echo "$index $actual"
     done
 }
 

@@ -14,7 +14,7 @@ all: $(ANSI) $(GEN)
 	./cut.sh $(shell basename $@ | cut -d'.' -f1) > $@
 
 clean:
-	rm *.ansi
-	rm *.chap
+	rm -f *.ansi
+	rm -f *.chap
 
 .PHONY: clean
