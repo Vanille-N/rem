@@ -52,6 +52,12 @@ impl File {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Help(String);
 
+impl Help {
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Pattern(String);
 impl Pattern {
@@ -239,6 +245,8 @@ pub enum Error {
     InvalidVarFzf(String),
     NoInstalledFzf,
     HistoryNotReadable(String),
+    MissingData(String, usize, &'static str),
+    HelpNotFound(String),
     SandBoxed,
 }
 
@@ -354,8 +362,18 @@ impl fmt::Display for Error {
             ),
             Error::HistoryNotReadable(histfile) => (
                 format!("Can't read history file"),
-                format!("{} is not readable", histfile),
+                format!("'{}' is not readable", histfile),
                 format!("check permissions"),
+            ),
+            Error::MissingData(entry, idx, pos) => (
+                format!("Corrupted (missing) data"),
+                format!("'{}' is too short for 'alias|name|timestamp'", entry,),
+                format!("fix missing field {} at entry number {}", pos, idx),
+            ),
+            Error::HelpNotFound(menu) => (
+                format!("Help menu not found"),
+                format!("'{}' does not exist", menu),
+                format!("use one of examples/cmd/select/info/rest/undo/del/pat/fzf/idx/main"),
             ),
             Error::SandBoxed => return Ok(()),
         };

@@ -213,8 +213,8 @@ help_fmt() {
         efmt "  Try one of"
         efmt "    examples, cmd, select,"
         efmt "    info, rest, undo, del,"
-        efmt "    pat, fzf, idx"
-        efmt "  or leave blank"
+        efmt "    pat, fzf, idx, main"
+        efmt "  (default main)"
         exit 100
     else
         efmt "${Bold}${Red}No help generated"

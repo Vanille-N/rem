@@ -3,6 +3,7 @@ use crate::{
     config::Config,
     select::Entry,
 };
+use std::fmt;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
@@ -42,8 +43,42 @@ pub fn exec(cmd: Command, cfg: Config) {
                 });
             }
         }
-        Action::Edit(ed, sel) => unimplemented!(),
-        Action::Help(menus) => unimplemented!(),
+        Action::Edit(ed, sel) => {
+            let entries = crate::select::Entries::from_file(cfg.history());
+            unimplemented!()
+        }
+        Action::Help(menus) => {
+            use HelpMenu::*;
+            if menus.is_empty() {
+                println!("{}", Main);
+            } else {
+                for menu in menus {
+                    println!(
+                        "{}",
+                        match menu.as_str() {
+                            "main" => Main,
+                            "examples" => Examples,
+                            "cmd" => Cmd,
+                            "info" => Info,
+                            "rest" => Rest,
+                            "undo" => Undo,
+                            "del" => Del,
+                            "select" => Select,
+                            "pat" => Pat,
+                            "fzf" => Idx,
+                            "blk" => Blk,
+                            "time" => Time,
+                            "intro" => Intro,
+                            "config" => Config,
+                            other => {
+                                eprintln!("{}", Error::HelpNotFound(other.to_string()));
+                                continue;
+                            }
+                        }
+                    );
+                }
+            }
+        }
     }
 }
 
@@ -143,4 +178,28 @@ fn generate_random_dirname() -> String {
         .take(ALIAS_LENGTH)
         .map(char::from)
         .collect()
+}
+
+#[derive(Clone, Copy, Debug)]
+enum HelpMenu {
+    Main,
+    Examples,
+    Cmd,
+    Info,
+    Rest,
+    Undo,
+    Del,
+    Select,
+    Pat,
+    Idx,
+    Blk,
+    Time,
+    Intro,
+    Config,
+}
+
+impl fmt::Display for HelpMenu {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
 }

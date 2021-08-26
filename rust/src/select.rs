@@ -8,7 +8,7 @@ pub struct Entry {
     pub timestamp: u64,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Entries {
     contents: Vec<Entry>,
     blocks: Vec<usize>,
@@ -24,6 +24,30 @@ impl Entries {
                 ))
             }
         };
+        let sep = regex::Regex::new(r"\n+").unwrap();
+        let mut idx = 1;
+        let mut entries = Self::default();
+        for block in sep.split(&contents).collect::<Vec<_>>().into_iter().rev() {
+            if block == "" {
+                continue;
+            }
+            entries.blocks.push(idx);
+            for entry in block.split("\n").collect::<Vec<_>>().into_iter().rev() {
+                let mut data = entry.split("|");
+                let alias = data
+                    .next()
+                    .ok_or_else(|| Error::MissingData(entry.to_string(), idx, "alias"))?;
+                let name = data
+                    .next()
+                    .ok_or_else(|| Error::MissingData(entry.to_string(), idx, "name"))?;
+                let timestamp = data
+                    .next()
+                    .ok_or_else(|| Error::MissingData(entry.to_string(), idx, "timestamp"))?;
+                dbg!(block, entry, idx);
+                idx += 1
+            }
+        }
+        entries.blocks.push(idx);
         unimplemented!()
     }
 }
