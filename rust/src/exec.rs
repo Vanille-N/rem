@@ -48,28 +48,27 @@ pub fn exec(cmd: Command, cfg: Config) {
             unimplemented!()
         }
         Action::Help(menus) => {
-            use HelpMenu::*;
             if menus.is_empty() {
-                println!("{}", Main);
+                println!("{}", MSG_HELP_MAIN);
             } else {
                 for menu in menus {
                     println!(
                         "{}",
                         match menu.as_str() {
-                            "main" => Main,
-                            "examples" => Examples,
-                            "cmd" => Cmd,
-                            "info" => Info,
-                            "rest" => Rest,
-                            "undo" => Undo,
-                            "del" => Del,
-                            "select" => Select,
-                            "pat" => Pat,
-                            "fzf" => Idx,
-                            "blk" => Blk,
-                            "time" => Time,
-                            "intro" => Intro,
-                            "config" => Config,
+                            "main" => MSG_HELP_MAIN,
+                            "examples" => MSG_HELP_EXAMPLES,
+                            "cmd" => MSG_HELP_CMD,
+                            "info" => MSG_HELP_INFO,
+                            "rest" => MSG_HELP_REST,
+                            "undo" => MSG_HELP_UNDO,
+                            "del" => MSG_HELP_DEL,
+                            "select" => MSG_HELP_SELECT,
+                            "pat" => MSG_HELP_PAT,
+                            "fzf" => MSG_HELP_FZF,
+                            "blk" => MSG_HELP_BLK,
+                            "time" => MSG_HELP_TIME,
+                            "intro" => MSG_HELP_INTRO,
+                            "config" => MSG_HELP_CONFIG,
                             other => {
                                 eprintln!("{}", Error::HelpNotFound(other.to_string()));
                                 continue;
@@ -180,26 +179,17 @@ fn generate_random_dirname() -> String {
         .collect()
 }
 
-#[derive(Clone, Copy, Debug)]
-enum HelpMenu {
-    Main,
-    Examples,
-    Cmd,
-    Info,
-    Rest,
-    Undo,
-    Del,
-    Select,
-    Pat,
-    Idx,
-    Blk,
-    Time,
-    Intro,
-    Config,
-}
-
-impl fmt::Display for HelpMenu {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
-    }
-}
+const MSG_HELP_MAIN: &str = include_str!("../../help/main.ansi");
+const MSG_HELP_EXAMPLES: &str = include_str!("../../help/examples.ansi");
+const MSG_HELP_CMD: &str = include_str!("../../help/cmd.ansi");
+const MSG_HELP_INFO: &str = include_str!("../../help/info.ansi");
+const MSG_HELP_REST: &str = include_str!("../../help/rest.ansi");
+const MSG_HELP_UNDO: &str = include_str!("../../help/undo.ansi");
+const MSG_HELP_DEL: &str = include_str!("../../help/del.ansi");
+const MSG_HELP_SELECT: &str = include_str!("../../help/select.ansi");
+const MSG_HELP_PAT: &str = include_str!("../../help/pat.ansi");
+const MSG_HELP_FZF: &str = include_str!("../../help/fzf.ansi");
+const MSG_HELP_BLK: &str = include_str!("../../help/blk.ansi");
+const MSG_HELP_TIME: &str = include_str!("../../help/time.ansi");
+const MSG_HELP_INTRO: &str = include_str!("../../help/intro.ansi");
+const MSG_HELP_CONFIG: &str = include_str!("../../help/config.ansi");

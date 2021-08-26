@@ -375,6 +375,7 @@ impl fmt::Display for Error {
                 format!("'{}' does not exist", menu),
                 format!("use one of examples/cmd/select/info/rest/undo/del/pat/fzf/idx/main"),
             ),
+
             Error::SandBoxed => return Ok(()),
         };
         writeln!(f, "{}{}{}", esc![BOLD;RED], title, esc![])?;
