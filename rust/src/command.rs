@@ -253,6 +253,7 @@ pub enum Error {
     HistoryNotReadable(String),
     MissingData(String, usize, &'static str),
     HelpNotFound(String),
+    CorruptedTimestamp(String),
     SandBoxed,
 }
 
@@ -381,7 +382,11 @@ impl fmt::Display for Error {
                 format!("'{}' does not exist", menu),
                 format!("use one of examples/cmd/select/info/rest/undo/del/pat/fzf/idx/main"),
             ),
-
+            Error::CorruptedTimestamp(ts) => (
+                format!("Unreadable timestamp"),
+                format!("'{}' cannot be parsed as a u64", ts),
+                format!("change to valid 64-bit unsigned integer: {} to {}", 0, u64::MAX),
+            ),
             Error::SandBoxed => return Ok(()),
         };
         writeln!(f, "{}{}{}", esc![BOLD;RED], title, esc![])?;

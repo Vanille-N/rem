@@ -40,18 +40,25 @@ impl Entries {
                 let mut data = entry.split("|");
                 let alias = data
                     .next()
-                    .ok_or_else(|| Error::MissingData(entry.to_string(), idx, "alias"))?;
+                    .ok_or_else(|| Error::MissingData(entry.to_string(), idx, "alias"))?
+                    .to_string();
                 let name = data
                     .next()
-                    .ok_or_else(|| Error::MissingData(entry.to_string(), idx, "name"))?;
-                let timestamp = data
+                    .ok_or_else(|| Error::MissingData(entry.to_string(), idx, "name"))?
+                    .to_string();
+                let timestamp_str = data
                     .next()
                     .ok_or_else(|| Error::MissingData(entry.to_string(), idx, "timestamp"))?;
+                let timestamp = timestamp_str
+                    .parse::<u64>()
+                    .map_err(|_| Error::CorruptedTimestamp(timestamp_str.to_string()))?;
                 dbg!(entry, idx);
-                idx += 1
+                idx += 1;
+                entries.contents.push(Entry { name, alias, timestamp });
             }
         }
         entries.blocks.push(idx);
+        dbg!(entries);
         unimplemented!()
     }
 }
