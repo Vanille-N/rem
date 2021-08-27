@@ -32,7 +32,7 @@ pub struct Command {
 #[derive(Debug, PartialEq, Eq)]
 pub enum Action {
     Remove(Vec<File>),
-    Edit(Option<Editor>, Selector),
+    Edit(Editor, Selector),
     Help(Vec<Help>),
 }
 
@@ -175,6 +175,7 @@ pub enum Editor {
     Delete,
     Restore,
     Info,
+    Null,
 }
 
 impl Editor {
@@ -183,7 +184,12 @@ impl Editor {
             Editor::Delete => "del",
             Editor::Restore => "rest",
             Editor::Info => "info",
+            Editor::Null => "null",
         }
+    }
+
+    pub fn run<'i>(self, entries: &'i Entries, selection: &BTreeSet<(usize, &'i Entry)>) {
+        unimplemented!()
     }
 }
 
@@ -482,17 +488,17 @@ impl Command {
                     return Err(Error::UselessSelector("undo", selector));
                 }
                 selector.blk.push(Block(String::from("1")));
-                Action::Edit(Some(Editor::Restore), selector)
+                Action::Edit(Editor::Restore, selector)
             }
             (_, _, Some(ed)) => {
                 if !pos_args.is_empty() {
                     return Err(Error::TooManyArgs(ed.as_str(), pos_args));
                 }
-                Action::Edit(Some(ed), selector)
+                Action::Edit(ed, selector)
             }
             _ => {
                 if pos_args.is_empty() {
-                    Action::Edit(None, selector)
+                    Action::Edit(Editor::Null, selector)
                 } else {
                     if selector.active {
                         return Err(Error::UselessSelector("remove", selector));
@@ -503,7 +509,7 @@ impl Command {
         };
         let critical = !matches!(
             &action,
-            Action::Edit(None, _) | Action::Edit(Some(Editor::Info), _) | Action::Help(_)
+            Action::Edit(Editor::Null, _) | Action::Edit(Editor::Info, _) | Action::Help(_)
         );
         Ok(Self {
             action,

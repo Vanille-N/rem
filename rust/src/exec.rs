@@ -1,7 +1,7 @@
 use crate::{
     command::{self, Action, Command, Error},
     config::Config,
-    select::Entry,
+    select::{Entry, Select},
 };
 use std::fmt;
 use std::path::{Path, PathBuf};
@@ -44,8 +44,21 @@ pub fn exec(cmd: Command, cfg: Config) {
             }
         }
         Action::Edit(ed, sel) => {
-            let entries = crate::select::Entries::from_file(cfg.history());
-            unimplemented!()
+            let entries = match crate::select::Entries::from_file(cfg.history()) {
+                Ok(entries) => entries,
+                Err(e) => {
+                    eprintln!("{}", e);
+                    return;
+                }
+            };
+            let mut selection = std::collections::BTreeSet::new();
+            match sel.make() {
+                Err(e) => eprintln!("{}", e),
+                Ok(sel) => {
+                    sel.select(&entries, &mut selection);
+                    ed.run(&entries, &selection);
+                }
+            }
         }
         Action::Help(menus) => {
             if menus.is_empty() {

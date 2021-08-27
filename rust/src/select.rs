@@ -24,15 +24,19 @@ impl Entries {
                 ))
             }
         };
-        let sep = regex::Regex::new(r"\n+").unwrap();
+        let sep = regex::Regex::new(r"\n{2,}").unwrap();
         let mut idx = 1;
         let mut entries = Self::default();
         for block in sep.split(&contents).collect::<Vec<_>>().into_iter().rev() {
+            dbg!(block);
             if block == "" {
                 continue;
             }
             entries.blocks.push(idx);
             for entry in block.split("\n").collect::<Vec<_>>().into_iter().rev() {
+                if entry == "" {
+                    continue;
+                }
                 let mut data = entry.split("|");
                 let alias = data
                     .next()
@@ -43,7 +47,7 @@ impl Entries {
                 let timestamp = data
                     .next()
                     .ok_or_else(|| Error::MissingData(entry.to_string(), idx, "timestamp"))?;
-                dbg!(block, entry, idx);
+                dbg!(entry, idx);
                 idx += 1
             }
         }
@@ -126,6 +130,7 @@ impl Selector {
         self.0.push(Box::new(sel));
     }
 }
+
 impl Select for Pattern {
     fn select<'i>(&self, entries: &'i Entries, selection: &mut BTreeSet<(usize, &'i Entry)>) {
         for (i, e) in entries.contents.iter().enumerate() {
@@ -156,5 +161,13 @@ impl Select for Fzf {
 impl Select for Block {
     fn select<'i>(&self, entries: &'i Entries, selection: &mut BTreeSet<(usize, &'i Entry)>) {
         unimplemented!()
+    }
+}
+
+impl Select for Selector {
+    fn select<'i>(&self, entries: &'i Entries, selection: &mut BTreeSet<(usize, &'i Entry)>) {
+        for s in &self.0 {
+            s.select(entries, selection);
+        }
     }
 }
