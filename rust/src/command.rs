@@ -1,4 +1,5 @@
 use crate::select::{self, Entries, Entry, Select};
+use crate::config::Config;
 use std::collections::BTreeSet;
 use std::fmt;
 use std::os::unix::fs::PermissionsExt;
@@ -188,8 +189,17 @@ impl Editor {
         }
     }
 
-    pub fn run<'i>(self, entries: &'i Entries, selection: &BTreeSet<(usize, &'i Entry)>) {
-        unimplemented!()
+    pub fn run<'i>(self, cfg: &Config, entries: &'i Entries, selection: &BTreeSet<(usize, &'i Entry)>) {
+        match self {
+            Editor::Delete => entries.delete(cfg, selection),
+            Editor::Restore => entries.restore(cfg, selection),
+            Editor::Info => entries.info(cfg, selection),
+            Editor::Null => {
+                for (num, entry) in selection {
+                    println!("{} {}", num, entry.true_name());
+                }
+            }
+        }
     }
 }
 
@@ -557,8 +567,11 @@ impl Selector {
 
     pub fn make(self) -> Result<select::Selector, Error> {
         let mut sel = select::Selector::new();
-        for p in self.pat {
-            sel.push(p.make()?);
+        if self.fzf {
+            sel.push(select::Fzf {});
+        }
+        for b in self.blk {
+            sel.push(b.make()?);
         }
         for t in self.time {
             sel.push(t.make()?);
@@ -566,8 +579,8 @@ impl Selector {
         for i in self.idx {
             sel.push(i.make()?);
         }
-        if self.fzf {
-            sel.push(select::Fzf {});
+        for p in self.pat {
+            sel.push(p.make()?);
         }
         Ok(sel)
     }

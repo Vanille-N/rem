@@ -56,7 +56,7 @@ pub fn exec(cmd: Command, cfg: Config) {
                 Err(e) => eprintln!("{}", e),
                 Ok(sel) => {
                     sel.select(&entries, &mut selection);
-                    ed.run(&entries, &selection);
+                    ed.run(&cfg, &entries, &selection);
                 }
             }
         }

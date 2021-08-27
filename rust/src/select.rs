@@ -1,4 +1,5 @@
 use crate::command::Error;
+use crate::config::Config;
 use std::collections::BTreeSet;
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
@@ -6,6 +7,25 @@ pub struct Entry {
     pub name: String,
     pub alias: String,
     pub timestamp: u64,
+}
+
+type Selection<'i> = BTreeSet<(usize, &'i Entry)>;
+
+impl Entry {
+    pub fn true_name(&self) -> String {
+        self.name.replace(&std::env::var("HOME").unwrap_or("~".to_string()), "~")
+    }
+
+    pub fn info(&self, cfg: &Config) {
+        let mut file = cfg.registry().to_path_buf();
+        file.push(&self.alias);
+        file.push("meta");
+        let text = match std::fs::read_to_string(file) {
+            Ok(text) => text,
+            Err(_) => panic!(),
+        };
+        println!("{}", text);
+    }
 }
 
 #[derive(Debug, Clone, Default)]
@@ -28,7 +48,6 @@ impl Entries {
         let mut idx = 1;
         let mut entries = Self::default();
         for block in sep.split(&contents).collect::<Vec<_>>().into_iter().rev() {
-            dbg!(block);
             if block == "" {
                 continue;
             }
@@ -52,19 +71,31 @@ impl Entries {
                 let timestamp = timestamp_str
                     .parse::<u64>()
                     .map_err(|_| Error::CorruptedTimestamp(timestamp_str.to_string()))?;
-                dbg!(entry, idx);
                 idx += 1;
                 entries.contents.push(Entry { name, alias, timestamp });
             }
         }
         entries.blocks.push(idx);
-        dbg!(entries);
+        Ok(entries)
+    }
+
+    pub fn info<'i>(&self, cfg: &Config, selection: &Selection<'i>) {
+        for (_, e) in selection {
+            e.info(cfg);
+        }
+    }
+
+    pub fn delete<'i>(&self, cfg: &Config, selection: &Selection<'i>) {
+        unimplemented!()
+    }
+
+    pub fn restore<'i>(&self, cfg: &Config, selection: &Selection<'i>) {
         unimplemented!()
     }
 }
 
 pub trait Select {
-    fn select<'i>(&self, entries: &'i Entries, selection: &mut BTreeSet<(usize, &'i Entry)>);
+    fn select<'i>(&self, entries: &'i Entries, selection: &mut Selection<'i>);
 }
 
 #[derive(Debug)]
@@ -139,7 +170,7 @@ impl Selector {
 }
 
 impl Select for Pattern {
-    fn select<'i>(&self, entries: &'i Entries, selection: &mut BTreeSet<(usize, &'i Entry)>) {
+    fn select<'i>(&self, entries: &'i Entries, selection: &mut Selection<'i>) {
         for (i, e) in entries.contents.iter().enumerate() {
             if !selection.contains(&(i, e)) && self.0.is_match(&e.name) {
                 selection.insert((i, e));
@@ -148,12 +179,12 @@ impl Select for Pattern {
     }
 }
 impl Select for Time {
-    fn select<'i>(&self, entries: &'i Entries, selection: &mut BTreeSet<(usize, &'i Entry)>) {
+    fn select<'i>(&self, entries: &'i Entries, selection: &mut Selection<'i>) {
         unimplemented!()
     }
 }
 impl Select for Index {
-    fn select<'i>(&self, entries: &'i Entries, selection: &mut BTreeSet<(usize, &'i Entry)>) {
+    fn select<'i>(&self, entries: &'i Entries, selection: &mut Selection<'i>) {
         let max = entries.contents.len() - 1;
         for i in self.start..=self.end.min(max) {
             selection.insert((i, &entries.contents[i]));
@@ -161,18 +192,18 @@ impl Select for Index {
     }
 }
 impl Select for Fzf {
-    fn select<'i>(&self, entries: &'i Entries, selection: &mut BTreeSet<(usize, &'i Entry)>) {
+    fn select<'i>(&self, entries: &'i Entries, selection: &mut Selection<'i>) {
         unimplemented!()
     }
 }
 impl Select for Block {
-    fn select<'i>(&self, entries: &'i Entries, selection: &mut BTreeSet<(usize, &'i Entry)>) {
+    fn select<'i>(&self, entries: &'i Entries, selection: &mut Selection<'i>) {
         unimplemented!()
     }
 }
 
 impl Select for Selector {
-    fn select<'i>(&self, entries: &'i Entries, selection: &mut BTreeSet<(usize, &'i Entry)>) {
+    fn select<'i>(&self, entries: &'i Entries, selection: &mut Selection<'i>) {
         for s in &self.0 {
             s.select(entries, selection);
         }
